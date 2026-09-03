@@ -119,20 +119,21 @@ namespace DroneRescue.Navigation
             System.Array.Clear(_blocked, 0, _blocked.Length);
 
             for (int i = 0; i < _obstacles.Count; i++)
-            {
-                var o = _obstacles[i];
-                RasteriseCircle(o.center, o.radius);
-            }
+                Rasterise(_obstacles[i]);
 
             ComputeClearanceMap();
             Version++;
         }
 
-        private void RasteriseCircle(Vector3 center, float radius)
+        /// <summary>
+        /// Marks every cell whose centre falls inside the obstacle footprint as
+        /// blocked. Works for both circular fire zones and boxed rubble, so the
+        /// blocked area matches what is actually drawn in the scene.
+        /// </summary>
+        private void Rasterise(Obstacle obstacle)
         {
-            WorldToCell(center, out var cx, out var cy);
-            int r = Mathf.CeilToInt(radius / CellSize);
-            float sqrRadius = radius * radius;
+            WorldToCell(obstacle.center, out var cx, out var cy);
+            int r = Mathf.CeilToInt(obstacle.BoundingRadius / CellSize) + 1;
 
             for (int y = cy - r; y <= cy + r; y++)
             {
@@ -141,10 +142,7 @@ namespace DroneRescue.Navigation
                     if (!InBounds(x, y))
                         continue;
 
-                    var cell = CellToWorld(x, y);
-                    float dx = cell.x - center.x;
-                    float dz = cell.z - center.z;
-                    if (dx * dx + dz * dz <= sqrRadius)
+                    if (obstacle.Contains(CellToWorld(x, y)))
                         _blocked[Index(x, y)] = true;
                 }
             }

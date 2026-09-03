@@ -1,0 +1,117 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: add64cfba143a5942a550650797b2f57, type: 3}
+  m_Name: EarthquakeScenario
+  m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Environment.ScenarioConfig
+  gridOrigin: {x: 0, y: 0, z: 0}
+  cellSize: 1
+  gridWidth: 100
+  gridHeight: 100
+  droneAltitude: 2
+  hospitals:
+  - {x: 90, y: 0, z: 10}
+  chargingStations:
+  - {x: 10, y: 0, z: 10}
+  - {x: 10, y: 0, z: 90}
+  obstacles:
+  - label: Rubble
+    shape: 1
+    center: {x: 25, y: 0, z: 30}
+    halfExtents: {x: 7, y: 4, z: 7}
+    radius: 6
+    visualHeight: 8
+    isDynamic: 0
+  - label: Rubble
+    shape: 1
+    center: {x: 25, y: 0, z: 65}
+    halfExtents: {x: 6, y: 4, z: 9}
+    radius: 6
+    visualHeight: 8
+    isDynamic: 0
+  - label: Rubble
+    shape: 1
+    center: {x: 55, y: 0, z: 20}
+    halfExtents: {x: 8, y: 4, z: 6}
+    radius: 6
+    visualHeight: 8
+    isDynamic: 0
+  - label: Rubble
+    shape: 1
+    center: {x: 62, y: 0, z: 55}
+    halfExtents: {x: 5, y: 4, z: 5}
+    radius: 6
+    visualHeight: 8
+    isDynamic: 0
+  - label: Rubble
+    shape: 1
+    center: {x: 78, y: 0, z: 78}
+    halfExtents: {x: 7, y: 4, z: 7}
+    radius: 6
+    visualHeight: 8
+    isDynamic: 0
+  - label: Rubble
+    shape: 1
+    center: {x: 45, y: 0, z: 85}
+    halfExtents: {x: 9, y: 4, z: 5}
+    radius: 6
+    visualHeight: 8
+    isDynamic: 0
+  drones:
+  - id: D-01
+    spawnPosition: {x: 8, y: 0, z: 8}
+    startBatteryPercent: 100
+  - id: D-02
+    spawnPosition: {x: 14, y: 0, z: 8}
+    startBatteryPercent: 92
+  - id: D-03
+    spawnPosition: {x: 8, y: 0, z: 14}
+    startBatteryPercent: 85
+  - id: D-04
+    spawnPosition: {x: 8, y: 0, z: 92}
+    startBatteryPercent: 100
+  - id: D-05
+    spawnPosition: {x: 14, y: 0, z: 92}
+    startBatteryPercent: 78
+  - id: D-06
+    spawnPosition: {x: 8, y: 0, z: 86}
+    startBatteryPercent: 64
+  maxRange: 250
+  patients:
+  - id: P-01
+    location: {x: 40, y: 0, z: 50}
+    priority: 0
+  - id: P-02
+    location: {x: 70, y: 0, z: 40}
+    priority: 1
+  - id: P-03
+    location: {x: 30, y: 0, z: 80}
+    priority: 2
+  - id: P-04
+    location: {x: 85, y: 0, z: 65}
+    priority: 0
+  triage:
+    mode: 0
+    criticalWeight: 0.25
+    seriousWeight: 0.35
+    stableWeight: 0.4
+    randomSeed: 12345
+  navigation:
+    clearanceWeight: 1
+    heuristicWeight: 1
+    simplifyPath: 1
+    nearestWalkableSearchRings: 12
+    neighbourRadius: 8
+    agentRepulsionWeight: 6
+    obstacleRepulsionWeight: 10
+    safetyMargin: 1
+    arrivalRadius: 1.5
+  visualiseGridTiles: 0

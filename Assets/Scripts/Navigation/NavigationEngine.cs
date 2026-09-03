@@ -359,21 +359,30 @@ namespace DroneRescue.Navigation
                 {
                     var obstacle = obstacles[i];
 
-                    Vector3 away = self.position - obstacle.center;
+                    // Measure from the nearest point of the footprint, not the centre,
+                    // so a long boxed building repels along its face rather than
+                    // pretending to be a circle around its middle.
+                    Vector3 closest = obstacle.ClosestPoint(self.position);
+                    Vector3 away = self.position - closest;
                     away.y = 0f;
-                    float centreDistance = away.magnitude;
-                    float surfaceDistance = centreDistance - obstacle.radius - self.radius;
+                    float edgeDistance = away.magnitude;
+                    float surfaceDistance = edgeDistance - self.radius;
 
                     if (surfaceDistance > senseRadius)
                         continue;
 
-                    if (centreDistance < 0.0001f)
+                    // Already inside the footprint: push straight out from the centre.
+                    if (edgeDistance < 0.0001f)
                     {
-                        away = Vector3.right;
-                        centreDistance = 0.0001f;
+                        away = self.position - obstacle.center;
+                        away.y = 0f;
+                        if (away.sqrMagnitude < 0.0001f)
+                            away = Vector3.right;
+                        edgeDistance = away.magnitude;
+                        surfaceDistance = 0f;
                     }
 
-                    Vector3 direction = away / centreDistance;
+                    Vector3 direction = away / edgeDistance;
                     float effective = Mathf.Max(0.25f, surfaceDistance);
                     float urgency = Mathf.Max(0f, senseRadius - surfaceDistance) / effective;
 
