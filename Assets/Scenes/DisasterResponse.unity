@@ -1692,6 +1692,7 @@ GameObject:
   - component: {fileID: 1208180818}
   - component: {fileID: 1208180819}
   - component: {fileID: 1208180820}
+  - component: {fileID: 1208180821}
   m_Layer: 0
   m_Name: MissionSystem
   m_TagString: Untagged
@@ -1807,6 +1808,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Planning.MissionPlanner
   environment: {fileID: 1208180813}
+  simulator: {fileID: 1208180816}
   verbose: 1
   w1Distance: 1
   w2BatteryUtilization: 60
@@ -1867,6 +1869,58 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Fleet.MissionExecutor
   environment: {fileID: 1208180813}
   verbose: 0
+--- !u!114 &1208180821
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1208180812}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa04c0146f72407a817108f480028daa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Environment.DynamicEventSystem
+  environment: {fileID: 1208180813}
+  planner: {fileID: 1208180818}
+  keyboardTriggers: 1
+  manualDroneId: 
+  manualFireCenter: {x: 50, y: 0, z: 45}
+  manualFireRadius: 9
+  manualEmergencyLocation: {x: 60, y: 0, z: 75}
+  manualEmergencyPriority: 0
+  runScriptedScenario: 1
+  timeline:
+  - atSeconds: 4
+    kind: 1
+    droneId: 
+    location: {x: 50, y: 0, z: 45}
+    radius: 9
+    priority: 0
+    fired: 0
+  - atSeconds: 6
+    kind: 0
+    droneId: D-02
+    location: {x: 0, y: 0, z: 0}
+    radius: 9
+    priority: 0
+    fired: 0
+  - atSeconds: 7
+    kind: 3
+    droneId: 
+    location: {x: 60, y: 0, z: 75}
+    radius: 9
+    priority: 0
+    fired: 0
+  - atSeconds: 10
+    kind: 2
+    droneId: D-04
+    location: {x: 0, y: 0, z: 0}
+    radius: 9
+    priority: 0
+    fired: 0
+  watchBatteries: 0
+  criticalBatteryPercent: 15
 --- !u!1 &1472396368
 GameObject:
   m_ObjectHideFlags: 0

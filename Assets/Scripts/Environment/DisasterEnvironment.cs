@@ -219,6 +219,140 @@ namespace DroneRescue.Environment
             return snapshots;
         }
 
+        // ---------------------------------------------------------------------
+        // Runtime changes to the world. The dynamic events drive these.
+        // ---------------------------------------------------------------------
+
+        /// <summary>
+        /// The environment's half of FireSpread(zone): a new fire front appears and
+        /// the obstacle map changes underneath everybody.
+        ///
+        /// This is the ONLY thing that invalidates the clearance map mid-run, which
+        /// is why AddObstacle rebakes here and nowhere else. The zone is marked
+        /// dynamic, so it does two jobs at once: the path search routes around it,
+        /// and local avoidance repels from it every frame.
+        ///
+        /// Re-planning the routes is the planner's half and is not done here. This
+        /// method changes the world; deciding what to do about it belongs elsewhere.
+        /// </summary>
+        public Obstacle SpreadFire(Vector3 center, float radius)
+        {
+            var fire = new Obstacle(new Vector3(center.x, 0f, center.z), radius, true);
+
+            if (Grid != null)
+                Grid.AddObstacle(fire);
+
+            SpawnFireVisual(fire);
+            return fire;
+        }
+
+        /// <summary>
+        /// The environment's half of NewEmergency(patient): a casualty that was not
+        /// there when the run started now is.
+        ///
+        /// Goes through the same DetectPatient the initial sweep uses, so triage
+        /// runs in exactly one place, and drops a marker in the scene so the new
+        /// casualty is visible rather than merely present in shared state.
+        /// </summary>
+        public Patient DetectPatientAt(Vector3 location, PatientPriority priority)
+        {
+            var patient = DetectPatient(NextPatientId(), new Vector3(location.x, 1f, location.z), priority);
+
+            var marker = SpawnPatientVisual(patient);
+            if (marker != null)
+            {
+                _patientMarkers.Add(marker);
+                marker.Bind(patient);
+            }
+
+            return patient;
+        }
+
+        /// <summary>
+        /// An id no existing patient is using. Counting patients is not enough on its
+        /// own: a scenario is free to author sparse ids, and a duplicate would make
+        /// two casualties indistinguishable in every log and metric downstream.
+        /// </summary>
+        private string NextPatientId()
+        {
+            for (int attempt = 0; attempt < 999; attempt++)
+            {
+                _patientCounter++;
+                string candidate = "P-" + _patientCounter.ToString("00");
+
+                bool taken = false;
+                for (int i = 0; i < Patients.Count; i++)
+                {
+                    if (Patients[i].id == candidate)
+                    {
+                        taken = true;
+                        break;
+                    }
+                }
+
+                if (!taken)
+                    return candidate;
+            }
+
+            return "P-" + System.Guid.NewGuid().ToString("N").Substring(0, 6);
+        }
+
+        private void SpawnFireVisual(Obstacle fire)
+        {
+            var body = SpawnPrimitive(PrimitiveType.Cylinder, "FireZone_Dynamic", fireMaterial);
+            if (body == null)
+                return;
+
+            // Unity's Cylinder primitive is 2 units tall at unit scale.
+            body.transform.localScale = new Vector3(fire.radius * 2f, 3f, fire.radius * 2f);
+            body.transform.position = new Vector3(fire.center.x, 3f, fire.center.z);
+        }
+
+        private PatientMarker SpawnPatientVisual(Patient patient)
+        {
+            Material material;
+            if (patient.priority == PatientPriority.Critical)
+                material = patientCriticalMaterial;
+            else if (patient.priority == PatientPriority.Serious)
+                material = patientSeriousMaterial;
+            else
+                material = patientStableMaterial;
+
+            var body = SpawnPrimitive(PrimitiveType.Capsule, patient.id, material);
+            if (body == null)
+                return null;
+
+            body.transform.localScale = new Vector3(1.2f, 1.0f, 1.2f);
+            body.transform.position = new Vector3(patient.location.x, 1.0f, patient.location.z);
+
+            var marker = body.AddComponent<PatientMarker>();
+            marker.Configure(patient.id, patient.priority);
+            return marker;
+        }
+
+        /// <summary>
+        /// Runtime twin of the scene builder's CreatePrimitive. Kept separate because
+        /// that one uses DestroyImmediate, which is an editor-only call.
+        /// </summary>
+        private GameObject SpawnPrimitive(PrimitiveType type, string name, Material material)
+        {
+            var parent = transform.Find(GeneratedRootName);
+
+            var go = GameObject.CreatePrimitive(type);
+            go.name = name;
+            go.transform.SetParent(parent != null ? parent : transform, false);
+
+            // No physics in this simulation, so colliders are dead weight.
+            var collider = go.GetComponent<Collider>();
+            if (collider != null)
+                Destroy(collider);
+
+            if (material != null)
+                go.GetComponent<Renderer>().sharedMaterial = material;
+
+            return go;
+        }
+
 #if UNITY_EDITOR
         // ---------------------------------------------------------------------
         // Editor-time scene builder

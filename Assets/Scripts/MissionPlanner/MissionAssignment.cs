@@ -67,8 +67,22 @@ namespace DroneRescue.Planning
         /// </summary>
         public List<Vector3> pendingRoute;
 
+        /// <summary>
+        /// Where the current leg is headed. Kept separate from the route because a
+        /// FireSpread re-path has to aim at the same destination while throwing the
+        /// old waypoints away.
+        /// </summary>
+        public Vector3 legGoal;
+
         /// <summary>Set by the executor when the current leg's last waypoint is reached.</summary>
         public bool arrived;
+
+        /// <summary>
+        /// Tells the drone side to drop what it is flying. Set when a mission is
+        /// reassigned out from under a drone: without it the drone would keep
+        /// flying to a patient that somebody else is now on the way to.
+        /// </summary>
+        public bool cancelRoute;
 
         /// <summary>Simulated time this mission was first dispatched. Feeds Phase 7's response time.</summary>
         public float dispatchedAtTime;

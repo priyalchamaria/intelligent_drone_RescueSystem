@@ -47,11 +47,29 @@ namespace DroneRescue.Fleet
             for (int i = 0; i < board.Count; i++)
             {
                 var mission = board[i];
-                if (mission.IsFinished)
-                    continue;
 
                 var agent = FindAgent(mission.droneId);
                 if (agent == null)
+                    continue;
+
+                // Cancellation is handled before the finished check, because an
+                // aborted mission is exactly the case where a drone is still in the
+                // air flying orders that no longer stand.
+                if (mission.cancelRoute)
+                {
+                    mission.cancelRoute = false;
+                    mission.pendingRoute = null;
+
+                    if (agent.Follower != null)
+                        agent.Follower.ClearRoute();
+
+                    if (verbose)
+                        Debug.Log("[Executor] " + mission.droneId + " stood down, route cleared.");
+
+                    continue;
+                }
+
+                if (mission.IsFinished)
                     continue;
 
                 // A route on the board means a new order. Take it, clear it, fly it.

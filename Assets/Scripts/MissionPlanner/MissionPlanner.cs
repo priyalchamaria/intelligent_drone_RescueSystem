@@ -19,15 +19,20 @@ namespace DroneRescue.Planning
     /// DisasterEnvironment.Assignments. It never calls a method on a DroneAgent,
     /// never touches a GameObject, and no drone ever reads another drone through it.
     ///
-    /// PHASE 6 SEAM: the four dynamic events re-invoke the methods here rather than
-    /// bringing handling of their own. BatteryLow and DroneFailed both end at
-    /// Reassign; NewEmergency ends at Push; FireSpread does not touch the planner at
-    /// all, because a changed obstacle map is a re-path, not a re-decision.
+    /// DYNAMIC EVENTS: the four Part 1 events re-enter the methods above rather
+    /// than bringing handling of their own. BatteryLow and DroneFailed both end at
+    /// Reassign, which re-runs the same filter and scoring over the fleet as it now
+    /// stands. NewEmergency ends at Push, the same door normal detection uses.
+    /// FireSpread ends at RepathActiveMissions and deliberately does NOT re-score
+    /// anything: a changed obstacle map is a re-path, not a re-decision.
     /// </summary>
     [DisallowMultipleComponent]
     public class MissionPlanner : MonoBehaviour
     {
         [SerializeField] private DisasterEnvironment environment;
+
+        [Tooltip("Only read from, for the collision and simulated-time figures in the run summary.")]
+        [SerializeField] private FleetSimulator simulator;
 
         [Tooltip("Log every filter and scoring decision. Loud, but it is what the checkpoints are read from.")]
         [SerializeField] private bool verbose = true;
@@ -97,6 +102,8 @@ namespace DroneRescue.Planning
         {
             if (environment == null)
                 environment = FindAnyObjectByType<DisasterEnvironment>();
+            if (simulator == null)
+                simulator = FindAnyObjectByType<FleetSimulator>();
         }
 
         // -----------------------------------------------------------------
@@ -184,6 +191,7 @@ namespace DroneRescue.Planning
                 return;
 
             Queue.Push(patient);
+            _runReported = false;
 
             if (verbose)
                 Debug.Log("[Planner] New patient detected -> queued: " + patient.id + " [" + patient.priority + "]");
@@ -468,6 +476,7 @@ namespace DroneRescue.Planning
                 leg = MissionLeg.ToPatient,
                 state = MissionState.AwaitingRoute,
                 pendingRoute = route,
+                legGoal = patient.location,
                 arrived = false,
                 dispatchedAtTime = Time.time,
                 landingSlot = IndexOfDrone(drone),
@@ -612,6 +621,7 @@ namespace DroneRescue.Planning
 
             mission.leg = leg;
             mission.pendingRoute = route;
+            mission.legGoal = goal;
             mission.arrived = false;
             mission.state = MissionState.AwaitingRoute;
             return true;
@@ -638,6 +648,7 @@ namespace DroneRescue.Planning
 
             mission.state = MissionState.Aborted;
             mission.pendingRoute = null;
+            mission.cancelRoute = true;
 
             var patient = mission.patient;
             if (patient == null || patient.state == PatientState.Delivered)
@@ -667,6 +678,116 @@ namespace DroneRescue.Planning
                     return board[i];
 
             return null;
+        }
+
+        // -----------------------------------------------------------------
+        // The four Part 1 dynamic events.
+        //
+        // Every one of these is a handful of lines, and that is the point. None
+        // of them plans, scores or routes anything itself. They change one fact
+        // about the world and then re-enter the ordinary dispatch machinery,
+        // which is what makes the system adapt without a second algorithm to
+        // keep in step with the first.
+        // -----------------------------------------------------------------
+
+        /// <summary>
+        /// BatteryLow(drone): status becomes Charging, and whatever it was carrying
+        /// out goes back to the queue.
+        ///
+        /// Charging is not Idle, so Step 2 excludes this drone from the reassignment
+        /// it just triggered. No special case is needed to stop it winning its own
+        /// task back.
+        /// </summary>
+        public void OnBatteryLow(Drone drone)
+        {
+            if (drone == null)
+                return;
+
+            Debug.Log("[Event] BATTERY LOW: " + drone.id + " at "
+                      + drone.batteryPercent.ToString("F0") + "% -> Charging.");
+
+            drone.status = DroneStatus.Charging;
+            Reassign(ActiveMissionOf(drone.id));
+        }
+
+        /// <summary>
+        /// DroneFailed(drone): status becomes Offline, and its task is reassigned.
+        ///
+        /// Identical shape to BatteryLow on purpose. The only difference between a
+        /// flat drone and a broken one, as far as planning goes, is the status it
+        /// lands in, and Step 2 excludes both the same way.
+        /// </summary>
+        public void OnDroneFailed(Drone drone)
+        {
+            if (drone == null)
+                return;
+
+            Debug.Log("[Event] DRONE FAILED: " + drone.id + " -> Offline.");
+
+            drone.status = DroneStatus.Offline;
+            Reassign(ActiveMissionOf(drone.id));
+        }
+
+        /// <summary>
+        /// NewEmergency(patient): push onto the priority queue.
+        ///
+        /// A Critical casualty arriving mid-run goes to the head of the queue and is
+        /// dispatched on the next tick, ahead of any Stable patient still waiting.
+        /// That reordering is the queue's comparator doing its job, not anything
+        /// this method does.
+        /// </summary>
+        public void OnNewEmergency(Patient patient)
+        {
+            if (patient == null)
+                return;
+
+            Debug.Log("[Event] NEW EMERGENCY: " + patient.id + " [" + patient.priority
+                      + "] detected at " + patient.location + ".");
+
+            Push(patient);
+
+            // A patient the fleet was previously infeasible for is no reason to make
+            // this one wait out the retry timer.
+            _nextDispatchAttemptTime = 0f;
+        }
+
+        /// <summary>
+        /// The planner's half of FireSpread(zone): re-path every drone that is
+        /// currently in the air, around the obstacle map as it now stands.
+        ///
+        /// NO SCORING RUNS HERE, deliberately. The assignments are still the right
+        /// assignments; it is only the routes that have gone stale. Each leg is
+        /// re-planned to the same destination it already had, through the same
+        /// FindSafePath a first dispatch uses.
+        ///
+        /// The caller updates the obstacle map before calling this. Rebuilding the
+        /// clearance map is the environment's job and happens once per event, not
+        /// once per drone.
+        /// </summary>
+        public int RepathActiveMissions()
+        {
+            if (environment == null || environment.Navigation == null)
+                return 0;
+
+            int repathed = 0;
+            var board = environment.Assignments;
+
+            for (int i = 0; i < board.Count; i++)
+            {
+                var mission = board[i];
+                if (mission.IsFinished || mission.drone == null)
+                    continue;
+
+                // Re-issuing the same leg re-plans it from where the drone is now.
+                if (StartLeg(mission, mission.leg, mission.legGoal, mission.leg.ToString()))
+                {
+                    repathed++;
+                    Debug.Log("[Planner] re-routed " + mission.droneId + " to " + mission.leg
+                              + " around the new obstacle map.");
+                }
+            }
+
+            return repathed;
         }
 
         // -----------------------------------------------------------------
@@ -707,6 +828,15 @@ namespace DroneRescue.Planning
                       + " | dispatches=" + DispatchCount
                       + " | fleet battery avg=" + (totalBattery / environment.DroneList.Count).ToString("F0") + "%"
                       + " min=" + minBattery.ToString("F0") + "%");
+
+            if (simulator != null)
+            {
+                var collisions = simulator.Collisions;
+                Debug.Log("[Planner] SAFETY. collisions=" + collisions.CollisionCount
+                          + " | closest approach=" + collisions.MinSeparation.ToString("F2")
+                          + " units of clear air between bodies"
+                          + " | simulated time=" + simulator.SimulatedTime.ToString("F1") + "s");
+            }
         }
 
         /// <summary>Reports a head-of-queue stall once, not once per retry.</summary>
