@@ -1688,6 +1688,7 @@ GameObject:
   - component: {fileID: 1208180813}
   - component: {fileID: 1208180816}
   - component: {fileID: 1208180815}
+  - component: {fileID: 1208180817}
   m_Layer: 0
   m_Name: MissionSystem
   m_TagString: Untagged
@@ -1740,7 +1741,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1208180812}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 66874007bd0f473408040781f7fd54e0, type: 3}
   m_Name: 
@@ -1763,9 +1764,32 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Fleet.FleetSimulator
   environment: {fileID: 1208180813}
-  enableLocalAvoidance: 0
+  enableLocalAvoidance: 1
   timeScale: 1
   maxStep: 0.1
+--- !u!114 &1208180817
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1208180812}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5a9caa80a1be85f46961cb8de260f90c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Environment.MultiDroneAvoidanceDemo
+  environment: {fileID: 1208180813}
+  simulator: {fileID: 1208180816}
+  assignments:
+  - droneId: D-01
+    patientId: P-03
+  - droneId: D-04
+    patientId: P-02
+  - droneId: D-05
+    patientId: P-01
+  continueToHospital: 1
+  verbose: 1
 --- !u!1 &1472396368
 GameObject:
   m_ObjectHideFlags: 0

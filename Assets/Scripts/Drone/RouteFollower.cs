@@ -110,7 +110,12 @@ namespace DroneRescue.Fleet
             // Stage 2 steps at a variable frame time with faster drones, so a fixed
             // tolerance would let an agent jump past a waypoint and circle it
             // forever. The tolerance grows to cover one step of travel when needed.
-            float tolerance = Mathf.Max(engine.Settings.waypointTolerance, Velocity.magnitude * dt * 1.5f);
+            bool isFinalWaypoint = _waypointIndex == _route.Count - 1;
+            float baseTolerance = isFinalWaypoint
+                ? engine.Settings.finalApproachTolerance
+                : engine.Settings.waypointTolerance;
+
+            float tolerance = Mathf.Max(baseTolerance, Velocity.magnitude * dt * 1.5f);
 
             if (FlatDistance(Position, _route[_waypointIndex]) < tolerance)
             {

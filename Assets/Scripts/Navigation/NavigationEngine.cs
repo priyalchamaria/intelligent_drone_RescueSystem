@@ -30,6 +30,11 @@ namespace DroneRescue.Navigation
 
         [Tooltip("Stage 1 distance at which an agent advances to its next waypoint.")]
         public float waypointTolerance = 0.35f;
+
+        [Tooltip("Stage 2 addition: arrival distance for the FINAL waypoint only. A drone " +
+                 "settling near a destination that another drone is parked on cannot always " +
+                 "close the last metre, so the last waypoint accepts a wider arrival.")]
+        public float finalApproachTolerance = 1.5f;
     }
 
     /// <summary>

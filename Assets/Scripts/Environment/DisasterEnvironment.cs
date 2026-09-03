@@ -161,6 +161,23 @@ namespace DroneRescue.Environment
 
         public Vector3 NearestHospital(Vector3 from) => config.NearestHospital(from);
 
+        /// <summary>
+        /// A distinct landing point on a ring around a site, one per slot index.
+        ///
+        /// Without this every delivery targets the identical hospital coordinate, and
+        /// the first drone to land sits on the goal repelling everyone behind it. The
+        /// queue then hovers just outside reach and never completes. Spreading
+        /// arrivals onto a ring removes the contention at source.
+        /// </summary>
+        public Vector3 LandingSlot(Vector3 site, int slotIndex, int slotCount)
+        {
+            if (slotCount <= 1 || config.landingRingRadius <= 0f)
+                return site;
+
+            float angle = (slotIndex % slotCount) * Mathf.PI * 2f / slotCount;
+            return site + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * config.landingRingRadius;
+        }
+
         public Vector3 NearestChargingStation(Vector3 from)
         {
             if (config.chargingStations == null || config.chargingStations.Count == 0)

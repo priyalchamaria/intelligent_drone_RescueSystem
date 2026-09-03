@@ -33,7 +33,11 @@ namespace DroneRescue.Fleet
         [SerializeField] private float maxStep = 0.1f;
 
         private readonly List<AgentData> _snapshots = new List<AgentData>();
+        private readonly List<bool> _flying = new List<bool>();
         private List<Obstacle> _dynamicObstacles = new List<Obstacle>();
+
+        /// <summary>Counts how close drones came to each other. Part 3 metric 5.</summary>
+        public CollisionTracker Collisions { get; } = new CollisionTracker();
 
         /// <summary>Simulated seconds elapsed since the run began. Phase 7 metrics use this.</summary>
         public float SimulatedTime { get; private set; }
@@ -76,10 +80,12 @@ namespace DroneRescue.Fleet
             // Phase 1 of the step: one snapshot of the whole fleet, taken before
             // anybody moves. Every drone reacts to this same picture.
             _snapshots.Clear();
+            _flying.Clear();
             for (int i = 0; i < agents.Count; i++)
             {
                 agents[i].EnsureData();
                 _snapshots.Add(agents[i].Follower.Snapshot());
+                _flying.Add(agents[i].HasRoute);
             }
 
             // Only dynamic hazards participate in local avoidance. Static rubble is
@@ -101,7 +107,22 @@ namespace DroneRescue.Fleet
                 agents[i].SyncFromFollower();
             }
 
+            // Measure separation from the post-move positions, so the numbers
+            // describe where the drones actually ended the step.
+            _snapshots.Clear();
+            for (int i = 0; i < agents.Count; i++)
+                _snapshots.Add(agents[i].Follower.Snapshot());
+
+            Collisions.Observe(_snapshots, _flying);
+
             SimulatedTime += dt;
+        }
+
+        /// <summary>Clears the simulated clock and collision counters.</summary>
+        public void ResetRun()
+        {
+            SimulatedTime = 0f;
+            Collisions.Reset();
         }
 
         private void RefreshDynamicObstacles()

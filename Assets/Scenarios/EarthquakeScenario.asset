@@ -22,6 +22,7 @@ MonoBehaviour:
   chargingStations:
   - {x: 10, y: 0, z: 10}
   - {x: 10, y: 0, z: 90}
+  landingRingRadius: 4
   obstacles:
   - label: Rubble
     shape: 1
@@ -111,4 +112,5 @@ MonoBehaviour:
     agentBuffer: 1
     obstacleBuffer: 1.5
     waypointTolerance: 0.35
+    finalApproachTolerance: 1.5
   visualiseGridTiles: 0

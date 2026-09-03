@@ -75,6 +75,11 @@ namespace DroneRescue.Environment
         public List<Vector3> hospitals = new List<Vector3>();
         public List<Vector3> chargingStations = new List<Vector3>();
 
+        [Tooltip("Drones land on a ring around a site rather than all on its centre point, " +
+                 "the way a real helipad has separate stands. Must be wider than the " +
+                 "avoidance buffer or arriving drones push each other off the pad.")]
+        [Min(0f)] public float landingRingRadius = 4f;
+
         [Header("Environment")]
         public List<ObstacleDefinition> obstacles = new List<ObstacleDefinition>();
 
