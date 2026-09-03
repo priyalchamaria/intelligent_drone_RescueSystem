@@ -105,13 +105,10 @@ MonoBehaviour:
     stableWeight: 0.4
     randomSeed: 12345
   navigation:
-    clearanceWeight: 1
-    heuristicWeight: 1
-    simplifyPath: 1
+    clearanceWeight: 5
+    simplifyPath: 0
     nearestWalkableSearchRings: 12
-    neighbourRadius: 8
-    agentRepulsionWeight: 6
-    obstacleRepulsionWeight: 10
-    safetyMargin: 1
-    arrivalRadius: 1.5
+    agentBuffer: 1
+    obstacleBuffer: 1.5
+    waypointTolerance: 0.35
   visualiseGridTiles: 0

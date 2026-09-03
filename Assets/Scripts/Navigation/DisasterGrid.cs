@@ -153,12 +153,18 @@ namespace DroneRescue.Navigation
         // ---------------------------------------------------------------------
 
         /// <summary>
-        /// Multi-source BFS ("brushfire") seeded from every blocked cell. Each free
-        /// cell ends up holding its distance in cells to the nearest obstacle.
-        /// This is what lets the path search prefer wide, safe corridors.
+        /// Multi-source BFS ("brushfire") seeded from every blocked cell, ported
+        /// directly from Stage 1's ComputeClearanceMap. Each free cell ends up
+        /// holding its distance in cells to the nearest obstacle, which is what lets
+        /// the path search prefer wide corridors.
         ///
-        /// Out-of-grid is treated as obstacle, so border cells get low clearance and
-        /// routes naturally stay away from the map edge.
+        /// Two Stage 1 behaviours matter and are preserved:
+        ///  - Only obstacles seed the flood. The map border is NOT treated as an
+        ///    obstacle, so routes are free to run along the edge of the world.
+        ///  - A cell the flood never reaches, which happens when the map has no
+        ///    obstacles at all, keeps int.MaxValue. The clearance penalty formula
+        ///    handles that: gridWidth minus a huge number goes negative and is
+        ///    clamped to zero, meaning no penalty.
         /// </summary>
         public void ComputeClearanceMap()
         {
@@ -168,33 +174,13 @@ namespace DroneRescue.Navigation
 
             var queue = new Queue<int>();
 
-            for (int y = 0; y < Height; y++)
+            for (int i = 0; i < _blocked.Length; i++)
             {
-                for (int x = 0; x < Width; x++)
+                if (_blocked[i])
                 {
-                    int idx = Index(x, y);
-                    bool isEdge = x == 0 || y == 0 || x == Width - 1 || y == Height - 1;
-
-                    if (_blocked[idx])
-                    {
-                        _clearance[idx] = 0;
-                        queue.Enqueue(idx);
-                    }
-                    else if (isEdge)
-                    {
-                        // Treat the world boundary as an obstacle seed at distance 1.
-                        _clearance[idx] = 1;
-                        queue.Enqueue(idx);
-                    }
+                    _clearance[i] = 0;
+                    queue.Enqueue(i);
                 }
-            }
-
-            // Every cell free and no border seeds (1x1 grid edge case): clearance is uniform.
-            if (queue.Count == 0)
-            {
-                for (int i = 0; i < _clearance.Length; i++)
-                    _clearance[i] = Width + Height;
-                return;
             }
 
             while (queue.Count > 0)
@@ -204,8 +190,7 @@ namespace DroneRescue.Navigation
                 int cy = idx / Width;
                 int next = _clearance[idx] + 1;
 
-                // 4-connected expansion: a Manhattan brushfire, which is what the
-                // Stage 1 implementation used and is enough to rank corridors.
+                // 4-connected expansion, as in Stage 1.
                 TryVisit(cx + 1, cy, next, queue);
                 TryVisit(cx - 1, cy, next, queue);
                 TryVisit(cx, cy + 1, next, queue);

@@ -4,60 +4,58 @@ using UnityEngine;
 namespace DroneRescue.Navigation
 {
     /// <summary>
-    /// Tunable knobs for the navigation engine. Kept as a serializable class so a
-    /// scene component can expose them in the inspector without the engine itself
-    /// depending on MonoBehaviour.
+    /// Tunable knobs for the navigation engine. Defaults are the values the
+    /// Stage 1 PathManager shipped with, so behaviour matches the validated
+    /// implementation out of the box.
     /// </summary>
     [System.Serializable]
     public class NavigationSettings
     {
-        [Header("Global path search")]
-        [Tooltip("Multiplier on the clearance penalty. Higher = routes hug the middle of open space more strongly, at the cost of longer paths.")]
-        public float clearanceWeight = 1f;
+        [Header("Global path search (Stage 1: FindPathSafest_GetPath)")]
+        [Tooltip("Stage 1 default was 5. Higher pushes routes further from obstacles at the cost of length.")]
+        public float clearanceWeight = 5f;
 
-        [Tooltip("Weight on the straight-line heuristic. 0 turns the search into pure Dijkstra.")]
-        public float heuristicWeight = 1f;
+        [Tooltip("Stage 1 used every grid tile as a waypoint. Leave off to match it.")]
+        public bool simplifyPath = false;
 
-        [Tooltip("Drop redundant waypoints when the straight line between them is clear.")]
-        public bool simplifyPath = true;
-
-        [Tooltip("How far outward to search for a walkable cell when start or goal sits inside an obstacle.")]
+        [Tooltip("Stage 2 addition: how far to search outward when a start or goal sits inside an obstacle.")]
         public int nearestWalkableSearchRings = 12;
 
-        [Header("Local avoidance")]
-        [Tooltip("Agents and obstacles beyond this world distance are ignored.")]
-        public float neighbourRadius = 8f;
+        [Header("Local avoidance (Stage 1: ComputeORCAVelocity)")]
+        [Tooltip("Stage 1 buffer added to the combined radii before agent repulsion kicks in.")]
+        public float agentBuffer = 1.0f;
 
-        [Tooltip("Strength of the inverse-distance repulsion from other agents.")]
-        public float agentRepulsionWeight = 6f;
+        [Tooltip("Stage 1 buffer added before obstacle repulsion kicks in.")]
+        public float obstacleBuffer = 1.5f;
 
-        [Tooltip("Strength of the inverse-distance repulsion from dynamic obstacles.")]
-        public float obstacleRepulsionWeight = 10f;
-
-        [Tooltip("Extra separation kept on top of the two agents' radii.")]
-        public float safetyMargin = 1f;
-
-        [Tooltip("Within this distance of the waypoint the preferred speed tapers to zero.")]
-        public float arrivalRadius = 1.5f;
+        [Tooltip("Stage 1 distance at which an agent advances to its next waypoint.")]
+        public float waypointTolerance = 0.35f;
     }
 
     /// <summary>
-    /// Stateless-per-call navigation service. Both entry points are safe to call
-    /// repeatedly, for arbitrary start/goal pairs and arbitrary agent counts.
-    /// There is no visualization, no GameObject reference and no per-agent state
-    /// held here — a caller owns its own agent state and asks this engine for
-    /// answers.
+    /// Navigation service ported from the Stage 1 PathManager.
+    ///
+    /// The Stage 1 original was one MonoBehaviour that owned the grid, the tile
+    /// GameObjects, the agents, the metrics and the CSV writer all at once, and it
+    /// planned exactly one path between two inspector-assigned transforms. The
+    /// algorithms below are its algorithms, lifted out of that class so they can be
+    /// called repeatedly for arbitrary start and goal pairs and arbitrary agent
+    /// counts, with no GameObject or visualisation coupling.
+    ///
+    /// Where behaviour had to change for Stage 2, the change is marked ADAPTED and
+    /// the reason is given. Everything else is the Stage 1 logic.
     /// </summary>
     public class NavigationEngine
     {
+        private static readonly float Sqrt2 = 1.41421356f;
+
         private readonly DisasterGrid _grid;
         private readonly NavigationSettings _settings;
 
-        // Scratch buffers reused across FindSafePath calls to avoid per-dispatch allocation.
-        private float[] _gCost;
-        private int[] _cameFrom;
-        private bool[] _closed;
-        private MinHeap _open;
+        // Scratch buffers reused across calls, so repeated dispatch does not allocate.
+        private readonly float[] _gCost;
+        private readonly int[] _cameFrom;
+        private readonly MinHeap _open;
 
         public NavigationEngine(DisasterGrid grid, NavigationSettings settings = null)
         {
@@ -67,7 +65,6 @@ namespace DroneRescue.Navigation
             int cells = grid.Width * grid.Height;
             _gCost = new float[cells];
             _cameFrom = new int[cells];
-            _closed = new bool[cells];
             _open = new MinHeap(cells);
         }
 
@@ -88,21 +85,32 @@ namespace DroneRescue.Navigation
         }
 
         /// <summary>
-        /// A* over the occupancy grid where each expansion pays a clearance penalty
-        /// on top of its movement cost, so the search is pulled toward cells that
-        /// sit far from any obstacle.
+        /// Port of Stage 1's FindPathSafest_GetPath. Searches the grid with each
+        /// node's queue priority set to gCost + clearancePenalty, where
+        /// clearancePenalty = max(0, gridWidth - clearance) * clearanceWeight.
+        /// There is no distance heuristic, exactly as in Stage 1, so this is a
+        /// Dijkstra-style search biased toward wide corridors rather than an A*.
         ///
         /// APPROXIMATION NOTE: this approximates Voronoi-style maximum-clearance
-        /// routing WITHOUT extracting an explicit Voronoi skeleton or roadmap. There
-        /// are no Voronoi edges anywhere in this code. The brushfire distance
-        /// transform in DisasterGrid plays the role the Voronoi diagram would play:
-        /// cells equidistant from two obstacles hold locally maximal clearance, and
-        /// penalising low clearance makes the optimal path prefer them.
+        /// routing WITHOUT extracting an explicit Voronoi skeleton or roadmap.
+        /// There are no Voronoi edges anywhere in Stage 1 or here. The brushfire
+        /// distance transform plays the role the Voronoi diagram would: cells
+        /// equidistant from two obstacles hold locally maximal clearance, and
+        /// penalising low clearance makes the chosen path prefer them.
+        ///
+        /// FIDELITY NOTE: Stage 1 adds the clearance penalty to the queue priority
+        /// only, never into gCost, so the penalty acts as a one-step lookahead and
+        /// does not accumulate along the route. That is reproduced here rather than
+        /// "corrected", because the Stage 1 results were produced with it.
         /// </summary>
         public List<Vector3> FindClearanceWeightedPath(Vector3 start, Vector3 goal)
         {
             var path = new List<Vector3>();
 
+            // ADAPTED: Stage 1 clamped start and goal to the grid and assumed they
+            // were never inside an obstacle. Stage 2 spawns patients and hospitals
+            // anywhere, and fire can spread over a marker, so recover to the nearest
+            // free cell instead of planning from inside a wall.
             if (!_grid.TryFindNearestWalkable(start, _settings.nearestWalkableSearchRings, out var sx, out var sy))
                 return path;
             if (!_grid.TryFindNearestWalkable(goal, _settings.nearestWalkableSearchRings, out var gx, out var gy))
@@ -117,25 +125,15 @@ namespace DroneRescue.Navigation
                 return path;
             }
 
-            for (int i = 0; i < _gCost.Length; i++)
-            {
-                _gCost[i] = float.PositiveInfinity;
-                _cameFrom[i] = -1;
-                _closed[i] = false;
-            }
-
-            _open.Clear();
+            ResetSearchState();
             _gCost[startIdx] = 0f;
-            _open.Push(startIdx, Heuristic(sx, sy, gx, gy));
+            _open.Push(startIdx, 0f);
 
             bool found = false;
 
             while (_open.Count > 0)
             {
                 int current = _open.Pop();
-                if (_closed[current])
-                    continue;
-                _closed[current] = true;
 
                 if (current == goalIdx)
                 {
@@ -158,24 +156,28 @@ namespace DroneRescue.Navigation
                         if (!_grid.IsWalkable(nx, ny))
                             continue;
 
-                        // Disallow cutting a diagonal between two blocked cells.
+                        // Stage 1 refused a diagonal step when either orthogonal
+                        // neighbour was an obstacle, so paths cannot slip through
+                        // the corner gap between two blocked tiles.
                         if (dx != 0 && dy != 0 &&
                             (!_grid.IsWalkable(cx + dx, cy) || !_grid.IsWalkable(cx, cy + dy)))
                             continue;
 
                         int neighbour = _grid.Index(nx, ny);
-                        if (_closed[neighbour])
+
+                        float moveCost = (dx == 0 || dy == 0) ? 1f : Sqrt2;
+                        float newG = _gCost[current] + moveCost;
+
+                        if (newG >= _gCost[neighbour])
                             continue;
 
-                        float stepCost = (dx != 0 && dy != 0) ? 1.41421356f : 1f;
-                        float tentative = _gCost[current] + stepCost + ClearancePenalty(nx, ny);
-
-                        if (tentative >= _gCost[neighbour])
-                            continue;
-
-                        _gCost[neighbour] = tentative;
+                        _gCost[neighbour] = newG;
                         _cameFrom[neighbour] = current;
-                        _open.Push(neighbour, tentative + Heuristic(nx, ny, gx, gy));
+
+                        int clearance = _grid.GetClearance(nx, ny);
+                        float clearancePenalty = Mathf.Max(0, _grid.Width - clearance) * _settings.clearanceWeight;
+
+                        _open.Push(neighbour, newG + clearancePenalty);
                     }
                 }
             }
@@ -183,14 +185,7 @@ namespace DroneRescue.Navigation
             if (!found)
                 return path;
 
-            // Walk the parent chain back and reverse.
-            for (int idx = goalIdx; idx != -1; idx = _cameFrom[idx])
-            {
-                path.Add(_grid.CellToWorld(idx % _grid.Width, idx / _grid.Width));
-                if (idx == startIdx)
-                    break;
-            }
-            path.Reverse();
+            BuildPath(startIdx, goalIdx, path);
 
             if (_settings.simplifyPath)
                 path = SimplifyPath(path);
@@ -199,37 +194,135 @@ namespace DroneRescue.Navigation
         }
 
         /// <summary>
-        /// Cost added for routing through a cell close to an obstacle.
-        /// clearancePenalty = max(0, gridWidth - clearance) * clearanceWeight,
-        /// so a cell touching an obstacle pays close to the full grid width while a
-        /// cell in the middle of open space pays almost nothing.
+        /// Port of Stage 1's FindPathForAgent: a plain A* on Euclidean step cost
+        /// with a straight-line heuristic and NO clearance penalty. It produces the
+        /// shortest route rather than the safest one.
+        ///
+        /// Worth knowing: in Stage 1 this, not the clearance-weighted search, was
+        /// the path the simulated agent actually flew. The clearance-weighted path
+        /// was computed as a "backbone" and used for visualisation and for the
+        /// deviation metric. Stage 2 follows the CLAUDE.md specification instead and
+        /// flies the clearance-weighted route, so this method is kept for the
+        /// Phase 9 baseline comparison rather than for normal dispatch.
+        ///
+        /// FIDELITY NOTE: Stage 1 omitted the diagonal corner-cutting guard here,
+        /// though it had one in the safest-path search. That inconsistency is
+        /// preserved so baseline numbers match Stage 1's.
         /// </summary>
-        private float ClearancePenalty(int x, int y)
+        public List<Vector3> FindShortestPath(Vector3 start, Vector3 goal)
         {
-            int clearance = _grid.GetClearance(x, y);
-            return Mathf.Max(0, _grid.Width - clearance) * _settings.clearanceWeight;
+            var path = new List<Vector3>();
+
+            if (!_grid.TryFindNearestWalkable(start, _settings.nearestWalkableSearchRings, out var sx, out var sy))
+                return path;
+            if (!_grid.TryFindNearestWalkable(goal, _settings.nearestWalkableSearchRings, out var gx, out var gy))
+                return path;
+
+            int startIdx = _grid.Index(sx, sy);
+            int goalIdx = _grid.Index(gx, gy);
+
+            if (startIdx == goalIdx)
+            {
+                path.Add(_grid.CellToWorld(gx, gy));
+                return path;
+            }
+
+            ResetSearchState();
+            _gCost[startIdx] = 0f;
+            _open.Push(startIdx, Heuristic(sx, sy, gx, gy));
+
+            bool found = false;
+
+            while (_open.Count > 0)
+            {
+                int current = _open.Pop();
+
+                if (current == goalIdx)
+                {
+                    found = true;
+                    break;
+                }
+
+                int cx = current % _grid.Width;
+                int cy = current / _grid.Width;
+
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    for (int dx = -1; dx <= 1; dx++)
+                    {
+                        if (dx == 0 && dy == 0)
+                            continue;
+
+                        int nx = cx + dx;
+                        int ny = cy + dy;
+                        if (!_grid.IsWalkable(nx, ny))
+                            continue;
+
+                        int neighbour = _grid.Index(nx, ny);
+
+                        float moveCost = (dx == 0 || dy == 0) ? 1f : Sqrt2;
+                        float newG = _gCost[current] + moveCost;
+
+                        if (newG >= _gCost[neighbour])
+                            continue;
+
+                        _gCost[neighbour] = newG;
+                        _cameFrom[neighbour] = current;
+                        _open.Push(neighbour, newG + Heuristic(nx, ny, gx, gy));
+                    }
+                }
+            }
+
+            if (!found)
+                return path;
+
+            BuildPath(startIdx, goalIdx, path);
+            return path;
         }
 
-        private float Heuristic(int x, int y, int gx, int gy)
+        private void ResetSearchState()
         {
-            if (_settings.heuristicWeight <= 0f)
-                return 0f;
+            for (int i = 0; i < _gCost.Length; i++)
+            {
+                _gCost[i] = float.PositiveInfinity;
+                _cameFrom[i] = -1;
+            }
 
+            _open.Clear();
+        }
+
+        private void BuildPath(int startIdx, int goalIdx, List<Vector3> into)
+        {
+            for (int idx = goalIdx; idx != -1; idx = _cameFrom[idx])
+            {
+                into.Add(_grid.CellToWorld(idx % _grid.Width, idx / _grid.Width));
+                if (idx == startIdx)
+                    break;
+            }
+
+            into.Reverse();
+        }
+
+        private static float Heuristic(int x, int y, int gx, int gy)
+        {
             float dx = gx - x;
             float dy = gy - y;
-            return Mathf.Sqrt(dx * dx + dy * dy) * _settings.heuristicWeight;
+            return Mathf.Sqrt(dx * dx + dy * dy);
         }
 
+        // ---------------------------------------------------------------------
+        // Optional path simplification (Stage 2 addition, off by default)
+        // ---------------------------------------------------------------------
+
         /// <summary>
-        /// Removes intermediate waypoints whose predecessor can reach their successor
-        /// in a straight line, which turns the staircase of a grid path into a few
-        /// long legs.
+        /// Drops waypoints whose predecessor can reach their successor in a straight
+        /// line. Stage 1 had no such step and flew every tile, so this is off by
+        /// default; it exists because Stage 2 dispatches far more paths and a
+        /// 60-waypoint route per mission is wasteful to store and stream.
         ///
-        /// The shortcut test is CLEARANCE-AWARE on purpose. A plain line-of-sight
-        /// test would happily straighten the route back onto cells that hug an
-        /// obstacle, throwing away exactly the safety margin the clearance-weighted
-        /// search just paid for. So a shortcut is only taken when the straight line
-        /// is at least as clear as the sub-path it replaces.
+        /// The shortcut test is clearance-aware on purpose. A plain line-of-sight
+        /// test would straighten the route back onto cells that hug an obstacle,
+        /// discarding the margin the clearance-weighted search just paid for.
         /// </summary>
         private List<Vector3> SimplifyPath(List<Vector3> path)
         {
@@ -238,8 +331,6 @@ namespace DroneRescue.Navigation
 
             var result = new List<Vector3> { path[0] };
             int anchor = 0;
-
-            // Lowest clearance seen on the original sub-path since the anchor.
             int subPathMinClearance = ClearanceAt(path[0]);
 
             for (int i = 1; i < path.Count - 1; i++)
@@ -259,10 +350,7 @@ namespace DroneRescue.Navigation
             return result;
         }
 
-        /// <summary>
-        /// Samples the segment at half-cell steps and reports whether every sample is
-        /// walkable and holds at least the required clearance.
-        /// </summary>
+        /// <summary>Samples a segment at half-cell steps; every sample must be walkable and clear enough.</summary>
         public bool IsShortcutSafe(Vector3 from, Vector3 to, int requiredClearance)
         {
             float distance = Vector3.Distance(from, to);
@@ -280,7 +368,6 @@ namespace DroneRescue.Navigation
             return true;
         }
 
-        /// <summary>Samples the segment at half-cell steps and reports whether every sample is walkable.</summary>
         public bool HasLineOfSight(Vector3 from, Vector3 to) => IsShortcutSafe(from, to, 0);
 
         private int ClearanceAt(Vector3 world)
@@ -294,26 +381,41 @@ namespace DroneRescue.Navigation
         // =====================================================================
 
         /// <summary>
-        /// Returns the velocity this agent should fly this frame, given what it can
-        /// currently sense around it.
+        /// Port of Stage 1's ComputeORCAVelocity. Returns the velocity this agent
+        /// should fly this frame given what it can currently sense.
         ///
-        /// IMPLEMENTATION NOTE: the body is an artificial-potential-field style
-        /// reciprocal avoidance heuristic, NOT the literal ORCA velocity-obstacle
-        /// linear program. It is ORCA-INSPIRED: each agent assumes its neighbours
-        /// are running the same rule and therefore takes only half the corrective
-        /// effort for each pairwise conflict, which is the reciprocity idea from
-        /// van den Berg et al. (2011) without the half-plane LP.
+        /// The Stage 1 rule, reproduced here: take the preferred velocity straight
+        /// at the next waypoint at full speed; for every agent closer than the
+        /// combined radii plus a buffer, add an inverse-distance push directly away
+        /// from it; do the same for nearby obstacles with a larger buffer; scale the
+        /// summed push by max speed, add it to the preferred velocity, and clamp the
+        /// result to max speed.
         ///
-        /// This signature is the seam. A true ORCA implementation (e.g. a port of
-        /// RVO2) can replace the body without any caller changing, so the swap
-        /// stays a one-file change.
+        /// IMPLEMENTATION NOTE: despite Stage 1 naming it ComputeORCAVelocity, this
+        /// is an artificial-potential-field style avoidance heuristic, NOT the ORCA
+        /// velocity-obstacle linear program. There are no half-plane constraints and
+        /// no LP solve anywhere in it. It is ORCA-inspired in that each agent acts
+        /// alone on what it senses and assumes others do the same, which is the
+        /// reciprocity idea from van den Berg et al. (2011), without the machinery.
+        ///
+        /// This signature is the seam. A true ORCA implementation, such as a port of
+        /// RVO2, can replace this body without any caller changing.
         /// </summary>
         public Vector3 ComputeAvoidanceVelocity(AgentData self, List<AgentData> neighbors, List<Obstacle> obstacles)
         {
-            Vector3 preferred = ComputePreferredVelocity(self);
-            Vector3 repulsion = Vector3.zero;
+            // ADAPTED: flattened to the XZ plane. Stage 1 kept every agent and
+            // obstacle at roughly the same height so 3D distance was harmless. Stage
+            // 2 flies drones above ground-level obstacles, so an unflattened
+            // distance would understate how close a drone is to a building.
+            Vector3 toGoal = self.goal - self.position;
+            toGoal.y = 0f;
 
-            float senseRadius = _settings.neighbourRadius;
+            // Stage 1 normalised and always flew at full speed, with no arrival taper.
+            Vector3 preferredVelocity = toGoal.sqrMagnitude > 0.0000001f
+                ? toGoal.normalized * self.maxSpeed
+                : Vector3.zero;
+
+            Vector3 avoidance = Vector3.zero;
 
             if (neighbors != null)
             {
@@ -327,29 +429,20 @@ namespace DroneRescue.Navigation
                     away.y = 0f;
                     float distance = away.magnitude;
 
-                    if (distance > senseRadius)
+                    float combinedRadius = self.radius + other.radius;
+                    if (distance >= combinedRadius + _settings.agentBuffer)
                         continue;
 
-                    float minSeparation = self.radius + other.radius + _settings.safetyMargin;
-
-                    // Perfectly co-located agents would produce a zero direction, so
-                    // break the tie deterministically using the id ordering.
+                    // Two agents exactly on top of each other give no direction.
+                    // Break the tie by id so the pair separates deterministically.
                     if (distance < 0.0001f)
                     {
                         away = new Vector3(self.id < other.id ? 1f : -1f, 0f, 0f);
                         distance = 0.0001f;
                     }
 
-                    Vector3 direction = away / distance;
-                    float intrusion = Mathf.Max(0f, senseRadius - distance);
-                    float urgency = intrusion / Mathf.Max(0.0001f, distance);
-
-                    // Extra kick once the pair is actually inside its separation distance.
-                    if (distance < minSeparation)
-                        urgency += (minSeparation - distance) / Mathf.Max(0.0001f, distance);
-
-                    // Half share: the neighbour is expected to take the other half.
-                    repulsion += direction * urgency * _settings.agentRepulsionWeight * 0.5f;
+                    // Stage 1: closer means a stronger push, as 1/distance.
+                    avoidance += away.normalized / distance;
                 }
             }
 
@@ -359,66 +452,49 @@ namespace DroneRescue.Navigation
                 {
                     var obstacle = obstacles[i];
 
-                    // Measure from the nearest point of the footprint, not the centre,
-                    // so a long boxed building repels along its face rather than
-                    // pretending to be a circle around its middle.
+                    // ADAPTED: Stage 1 measured to the obstacle's centre and assumed
+                    // every obstacle had radius 1. Stage 2 obstacles have real
+                    // footprints including long boxes, so measure to the nearest
+                    // point of the footprint. A building now repels from its face
+                    // rather than from its middle.
                     Vector3 closest = obstacle.ClosestPoint(self.position);
                     Vector3 away = self.position - closest;
                     away.y = 0f;
-                    float edgeDistance = away.magnitude;
-                    float surfaceDistance = edgeDistance - self.radius;
+                    float distance = away.magnitude;
 
-                    if (surfaceDistance > senseRadius)
+                    if (distance >= self.radius + _settings.obstacleBuffer)
                         continue;
 
-                    // Already inside the footprint: push straight out from the centre.
-                    if (edgeDistance < 0.0001f)
+                    // Inside the footprint: push out from the centre instead.
+                    if (distance < 0.0001f)
                     {
                         away = self.position - obstacle.center;
                         away.y = 0f;
-                        if (away.sqrMagnitude < 0.0001f)
+                        if (away.sqrMagnitude < 0.0000001f)
                             away = Vector3.right;
-                        edgeDistance = away.magnitude;
-                        surfaceDistance = 0f;
+                        distance = 0.0001f;
                     }
 
-                    Vector3 direction = away / edgeDistance;
-                    float effective = Mathf.Max(0.25f, surfaceDistance);
-                    float urgency = Mathf.Max(0f, senseRadius - surfaceDistance) / effective;
-
-                    // An obstacle does not move out of the way, so no half share here.
-                    repulsion += direction * urgency * _settings.obstacleRepulsionWeight;
+                    avoidance += away.normalized / distance;
                 }
             }
 
-            Vector3 result = preferred + repulsion;
-            result.y = 0f;
+            Vector3 newVelocity = preferredVelocity + avoidance * self.maxSpeed;
+            newVelocity.y = 0f;
 
-            if (result.sqrMagnitude > self.maxSpeed * self.maxSpeed)
-                result = result.normalized * self.maxSpeed;
+            if (newVelocity.sqrMagnitude > self.maxSpeed * self.maxSpeed)
+                newVelocity = newVelocity.normalized * self.maxSpeed;
 
-            return result;
-        }
-
-        /// <summary>Straight-line pull toward the current waypoint, tapering off on arrival.</summary>
-        private Vector3 ComputePreferredVelocity(AgentData self)
-        {
-            Vector3 toGoal = self.goal - self.position;
-            toGoal.y = 0f;
-            float distance = toGoal.magnitude;
-
-            if (distance < 0.0001f)
-                return Vector3.zero;
-
-            float speed = self.maxSpeed;
-            if (distance < _settings.arrivalRadius)
-                speed *= distance / _settings.arrivalRadius;
-
-            return (toGoal / distance) * speed;
+            return newVelocity;
         }
 
         // =====================================================================
         // Binary min-heap keyed by float priority.
+        //
+        // Stage 1 used a generic PriorityQueue<TileData> that compared on a
+        // priority field stored on the tile itself. Same algorithm, but the
+        // priority travels with the heap entry here so a re-queued node cannot
+        // silently change the ordering of entries already in the heap.
         // =====================================================================
 
         private class MinHeap

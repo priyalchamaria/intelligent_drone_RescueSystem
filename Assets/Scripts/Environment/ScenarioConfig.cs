@@ -92,6 +92,7 @@ namespace DroneRescue.Environment
         public TriageAssigner triage = new TriageAssigner();
 
         [Header("Navigation tuning")]
+        [Tooltip("Defaults match the Stage 1 PathManager values.")]
         public NavigationSettings navigation = new NavigationSettings();
 
         [Header("Debug")]
