@@ -247,7 +247,7 @@ PHASE 9 — Baseline & Polish
 PART 5 — WORKING STYLE
 ============================================================
 
-- Commit to git after every checkpoint passes, with a clear message naming the 
+-Commit to git after every checkpoint passes, and push to GitHub too, with a clear message naming the 
   phase completed. Initialize git now if not already present.
 - Never touch or modify the Stage 1 project/scene if it exists in this repo — 
   Stage 2 code is new/separate, ported logic only, source files untouched.
