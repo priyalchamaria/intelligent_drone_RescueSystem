@@ -114,16 +114,14 @@ namespace DroneRescue.Planning
             planner.ResetQueue();
             int added = planner.SyncQueueFromEnvironment();
 
-            var text = new System.Text.StringBuilder();
-            text.Append("[Phase4] Priority queue holds ").Append(added)
-                .Append(" patients, service order:");
+            // One line per patient, for the same Console-visibility reason as the
+            // filter table: a multi-line entry collapses to its first line.
+            Debug.Log("[Phase4] Priority queue holds " + added + " patients, service order:");
 
             int position = 1;
             foreach (var patient in planner.Queue.ToOrderedList())
-                text.Append("\n  ").Append(position++).Append(". ").Append(patient.id)
-                    .Append(" [").Append(patient.priority).Append("] at ").Append(patient.location);
-
-            Debug.Log(text.ToString());
+                Debug.Log("[Phase4]   " + (position++) + ". " + patient.id
+                          + " [" + patient.priority + "] at " + patient.location);
         }
 
         private void ReportFilters()

@@ -203,22 +203,26 @@ namespace DroneRescue.Planning
             return Mathf.Sqrt(dx * dx + dz * dz);
         }
 
+        /// <summary>
+        /// One Debug.Log per line, not one multi-line log for the whole table.
+        /// Unity's Console list view shows only the first line of an entry, so a
+        /// combined log hides every drone verdict until the row is clicked. Separate
+        /// calls make the whole filter pass readable without selecting anything.
+        /// </summary>
         private void LogFilterDecision(Patient patient, List<DroneEvaluation> all, int feasibleCount)
         {
-            var text = new System.Text.StringBuilder();
-            text.Append("[Planner] Hard filter for ").Append(patient.id)
-                .Append(" [").Append(patient.priority).Append("] at ").Append(patient.location)
-                .Append(" | MAX_RANGE=").Append(MaxRange.ToString("F0"))
-                .Append(" | hospital leg=")
-                .Append((all.Count > 0 ? all[0].distanceToHospital : 0f).ToString("F1")).Append("u");
+            float hospitalLeg = all.Count > 0 ? all[0].distanceToHospital : 0f;
+
+            Debug.Log("[Planner] Hard filter for " + patient.id
+                      + " [" + patient.priority + "] at " + patient.location
+                      + " | MAX_RANGE=" + MaxRange.ToString("F0")
+                      + " | hospital leg=" + hospitalLeg.ToString("F1") + "u");
 
             for (int i = 0; i < all.Count; i++)
-                text.Append("\n  ").Append(all[i].Explain());
+                Debug.Log("[Planner]   " + all[i].Explain());
 
-            text.Append("\n  -> ").Append(feasibleCount).Append(" of ").Append(all.Count)
-                .Append(" drones feasible.");
-
-            Debug.Log(text.ToString());
+            Debug.Log("[Planner]   -> " + feasibleCount + " of " + all.Count
+                      + " drones feasible for " + patient.id + ".");
         }
 
 #if UNITY_EDITOR
