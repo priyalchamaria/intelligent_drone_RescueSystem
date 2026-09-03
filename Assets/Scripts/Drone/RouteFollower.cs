@@ -103,6 +103,21 @@ namespace DroneRescue.Fleet
                 return;
             }
 
+            // Abandon waypoints another drone is sitting on.
+            //
+            // Routes are planned against the obstacle grid, which knows nothing
+            // about where drones are parked. A drone resting on a charging pad can
+            // therefore sit exactly on a waypoint of somebody else's route. That
+            // waypoint is then physically unreachable: the repulsion from the
+            // occupant grows without bound as the follower closes in, so it stalls
+            // at a standoff distance and never advances, forever.
+            //
+            // A waypoint that cannot be occupied is not worth pursuing, so skip past
+            // it and steer for the next one instead. The final waypoint is never
+            // skipped; arriving near it is handled by the wider final approach
+            // tolerance and by landing slots.
+            SkipOccupiedWaypoints(neighbors, engine);
+
             Velocity = engine.ComputeAvoidanceVelocity(Snapshot(), neighbors, obstacles);
 
             // ADAPTED: Stage 1 stepped at a fixed dt of 0.07 with a max speed of 3,
@@ -136,6 +151,42 @@ namespace DroneRescue.Fleet
 
             Position += Velocity * dt;
             Position.y = Altitude;
+        }
+
+        /// <summary>
+        /// Advances past any intermediate waypoint that a neighbouring drone is
+        /// physically occupying. Stops at the last waypoint, which is always kept.
+        /// </summary>
+        private void SkipOccupiedWaypoints(List<AgentData> neighbors, NavigationEngine engine)
+        {
+            if (neighbors == null || neighbors.Count == 0)
+                return;
+
+            int guard = 0;
+            while (_waypointIndex < _route.Count - 1 && guard++ < _route.Count)
+            {
+                if (!IsOccupied(_route[_waypointIndex], neighbors))
+                    return;
+
+                _waypointIndex++;
+            }
+        }
+
+        private bool IsOccupied(Vector3 waypoint, List<AgentData> neighbors)
+        {
+            for (int i = 0; i < neighbors.Count; i++)
+            {
+                var other = neighbors[i];
+                if (other.id == Id)
+                    continue;
+
+                // Occupied means this drone could not sit at the waypoint without
+                // its body overlapping the other drone's.
+                if (FlatDistance(waypoint, other.position) < Radius + other.radius)
+                    return true;
+            }
+
+            return false;
         }
 
         private static float FlatDistance(Vector3 a, Vector3 b)

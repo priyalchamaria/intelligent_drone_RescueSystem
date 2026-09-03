@@ -416,9 +416,8 @@ namespace DroneRescue.Navigation
             toGoal.y = 0f;
 
             // Stage 1 normalised and always flew at full speed, with no arrival taper.
-            Vector3 preferredVelocity = toGoal.sqrMagnitude > 0.0000001f
-                ? toGoal.normalized * self.maxSpeed
-                : Vector3.zero;
+            Vector3 preferredDirection = toGoal.sqrMagnitude > 0.0000001f ? toGoal.normalized : Vector3.zero;
+            Vector3 preferredVelocity = preferredDirection * self.maxSpeed;
 
             Vector3 avoidance = Vector3.zero;
 
@@ -447,7 +446,31 @@ namespace DroneRescue.Navigation
                     }
 
                     // Stage 1: closer means a stronger push, as 1/distance.
-                    avoidance += away.normalized / distance;
+                    Vector3 direction = away.normalized;
+                    float magnitude = 1f / distance;
+                    Vector3 push = direction * magnitude;
+
+                    // ADAPTED: add a sideways component when the push points almost
+                    // straight back along the way we want to travel.
+                    //
+                    // Stage 1's push is purely radial. A purely radial push cannot
+                    // get an agent past a blocker sitting on its path: the push
+                    // cancels the preferred velocity exactly and the agent stops
+                    // dead, forever. That is the classic potential-field local
+                    // minimum, and it is not hypothetical here. A drone parked on a
+                    // charging pad that happens to lie on another drone's route
+                    // pinned it at zero speed indefinitely.
+                    //
+                    // Real ORCA never has this failure, because its half-plane
+                    // constraint still permits motion across the obstacle rather
+                    // than only away from it. Rotating part of the push by ninety
+                    // degrees restores that: the agent slides around the blocker
+                    // instead of pressing into it. The side is chosen by id order so
+                    // that two drones meeting head-on pick opposite sides and the
+                    // choice is reproducible.
+                    push += TangentialEscape(direction, preferredDirection, magnitude, self.id > other.id);
+
+                    avoidance += push;
                 }
             }
 
@@ -480,7 +503,17 @@ namespace DroneRescue.Navigation
                         distance = 0.0001f;
                     }
 
-                    avoidance += away.normalized / distance;
+                    Vector3 obstacleDirection = away.normalized;
+                    float obstacleMagnitude = 1f / distance;
+                    Vector3 obstaclePush = obstacleDirection * obstacleMagnitude;
+
+                    // Same escape term. An obstacle cannot move aside, so pick the
+                    // side that lies closer to where the agent is already heading.
+                    Vector3 leftward = new Vector3(-obstacleDirection.z, 0f, obstacleDirection.x);
+                    bool flip = Vector3.Dot(leftward, preferredDirection) < 0f;
+                    obstaclePush += TangentialEscape(obstacleDirection, preferredDirection, obstacleMagnitude, flip);
+
+                    avoidance += obstaclePush;
                 }
             }
 
@@ -492,6 +525,29 @@ namespace DroneRescue.Navigation
 
             return newVelocity;
         }
+
+        /// <summary>
+        /// The sideways part of a repulsion, used only when the radial push opposes
+        /// the direction of travel. Returns zero when the push is not blocking, so
+        /// ordinary passing encounters keep Stage 1's behaviour exactly.
+        /// </summary>
+        private static Vector3 TangentialEscape(Vector3 pushDirection, Vector3 preferredDirection, float magnitude, bool flipSide)
+        {
+            if (preferredDirection.sqrMagnitude < 0.0000001f)
+                return Vector3.zero;
+
+            // 1 means the push points exactly back along the travel direction.
+            float opposition = -Vector3.Dot(pushDirection, preferredDirection);
+            if (opposition <= 0.3f)
+                return Vector3.zero;
+
+            Vector3 tangent = new Vector3(-pushDirection.z, 0f, pushDirection.x);
+            if (flipSide)
+                tangent = -tangent;
+
+            return tangent * magnitude * opposition;
+        }
+
 
         // =====================================================================
         // Binary min-heap keyed by float priority.
