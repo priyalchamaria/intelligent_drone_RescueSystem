@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using DroneRescue.Fleet;
 using DroneRescue.Navigation;
+using DroneRescue.Planning;
 
 namespace DroneRescue.Environment
 {
@@ -43,6 +44,15 @@ namespace DroneRescue.Environment
 
         /// <summary>Every patient currently known to the system, in detection order.</summary>
         public List<Patient> Patients { get; } = new List<Patient>();
+
+        /// <summary>
+        /// The dispatch board: every mission the planner has ordered, live.
+        ///
+        /// This is the downlink half of the hub-and-spoke model, and it sits in
+        /// shared state for the same reason DroneList does. The planner writes
+        /// orders here and the drone side reads them; neither one calls the other.
+        /// </summary>
+        public List<MissionAssignment> Assignments { get; } = new List<MissionAssignment>();
 
         public DisasterGrid Grid { get; private set; }
         public NavigationEngine Navigation { get; private set; }
@@ -99,6 +109,7 @@ namespace DroneRescue.Environment
         {
             DroneList.Clear();
             Patients.Clear();
+            Assignments.Clear();
             _droneAgents.Clear();
             _patientMarkers.Clear();
             _patientCounter = 0;

@@ -99,6 +99,24 @@ namespace DroneRescue.Fleet
             Follower.AssignRoute(waypoints);
         }
 
+        /// <summary>
+        /// Spends battery for distance flown.
+        ///
+        /// Deliberately the exact inverse of the Part 1 range formula. Range is
+        /// (batteryPercent / 100) * MAX_RANGE, so one world unit of flight costs
+        /// (1 / MAX_RANGE) * 100 percentage points. A drone that starts a mission
+        /// with a batteryUtilization of 0.9 therefore lands with a tenth of its
+        /// range left, and the hard filter's promise stays true instead of being a
+        /// number nobody ever spends.
+        /// </summary>
+        public void ConsumeBattery(float distanceFlown, float maxRange)
+        {
+            if (Data == null || maxRange <= 0f || distanceFlown <= 0f)
+                return;
+
+            Data.batteryPercent = Mathf.Max(0f, Data.batteryPercent - distanceFlown / maxRange * 100f);
+        }
+
         /// <summary>Copies flight state onto the transform and into the shared record.</summary>
         public void SyncFromFollower()
         {

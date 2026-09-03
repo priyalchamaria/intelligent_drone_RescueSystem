@@ -32,6 +32,10 @@ namespace DroneRescue.Fleet
         [Tooltip("Largest step the simulation will take. Caps the effect of a frame hitch.")]
         [SerializeField] private float maxStep = 0.1f;
 
+        [Tooltip("Spend battery for distance flown, using the same MAX_RANGE the hard filter " +
+                 "budgets against. Off means batteries never move and the Charging state is unreachable.")]
+        [SerializeField] private bool drainBattery = true;
+
         private readonly List<AgentData> _snapshots = new List<AgentData>();
         private readonly List<bool> _flying = new List<bool>();
         private List<Obstacle> _dynamicObstacles = new List<Obstacle>();
@@ -101,9 +105,18 @@ namespace DroneRescue.Fleet
                 agents[i].Follower.ComputeVelocity(engine, neighbours, obstacles, dt);
 
             // Phase 3 of the step: move, then publish to transforms and shared state.
+            // Battery is charged for the distance actually covered, which is what
+            // makes the Part 1 range budget mean something over a whole run.
+            float maxRange = drainBattery && environment.Config != null ? environment.Config.maxRange : 0f;
+
             for (int i = 0; i < agents.Count; i++)
             {
+                Vector3 before = agents[i].Follower.Position;
                 agents[i].Follower.Integrate(dt);
+
+                if (maxRange > 0f)
+                    agents[i].ConsumeBattery(FlatDistance(before, agents[i].Follower.Position), maxRange);
+
                 agents[i].SyncFromFollower();
             }
 
@@ -137,6 +150,13 @@ namespace DroneRescue.Fleet
                 if (all[i].isDynamic)
                     _dynamicObstacles.Add(all[i]);
             }
+        }
+
+        private static float FlatDistance(Vector3 a, Vector3 b)
+        {
+            float dx = a.x - b.x;
+            float dz = a.z - b.z;
+            return Mathf.Sqrt(dx * dx + dz * dz);
         }
 
         /// <summary>Used by the editor-time harness to bind the environment without a scene reference.</summary>

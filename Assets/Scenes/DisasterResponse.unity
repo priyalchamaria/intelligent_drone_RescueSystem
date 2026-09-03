@@ -1691,6 +1691,7 @@ GameObject:
   - component: {fileID: 1208180817}
   - component: {fileID: 1208180818}
   - component: {fileID: 1208180819}
+  - component: {fileID: 1208180820}
   m_Layer: 0
   m_Name: MissionSystem
   m_TagString: Untagged
@@ -1769,6 +1770,7 @@ MonoBehaviour:
   enableLocalAvoidance: 1
   timeScale: 1
   maxStep: 0.1
+  drainBattery: 1
 --- !u!114 &1208180817
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1806,6 +1808,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Planning.MissionPlanner
   environment: {fileID: 1208180813}
   verbose: 1
+  w1Distance: 1
+  w2BatteryUtilization: 60
+  w3Risk: 40
+  risk:
+    fireInfluenceRadius: 20
+    openClearanceCells: 12
+    confinementWeight: 0.5
+  autoRun: 1
+  lowBatteryPercent: 25
+  flyToChargerWhenLow: 1
+  retryInterval: 2
 --- !u!114 &1208180819
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1813,7 +1826,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1208180812}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bc1010a8a3144a2a99e503b366ed0368, type: 3}
   m_Name: 
@@ -1840,6 +1853,20 @@ MonoBehaviour:
     batteryPercent: 100
     note: failed drone, must be excluded by the status filter
   verbose: 1
+--- !u!114 &1208180820
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1208180812}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9c8b9a0e63a4dac8ea2723867f6482a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Fleet.MissionExecutor
+  environment: {fileID: 1208180813}
+  verbose: 0
 --- !u!1 &1472396368
 GameObject:
   m_ObjectHideFlags: 0
