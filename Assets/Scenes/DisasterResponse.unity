@@ -1689,6 +1689,8 @@ GameObject:
   - component: {fileID: 1208180816}
   - component: {fileID: 1208180815}
   - component: {fileID: 1208180817}
+  - component: {fileID: 1208180818}
+  - component: {fileID: 1208180819}
   m_Layer: 0
   m_Name: MissionSystem
   m_TagString: Untagged
@@ -1774,7 +1776,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1208180812}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5a9caa80a1be85f46961cb8de260f90c, type: 3}
   m_Name: 
@@ -1789,6 +1791,54 @@ MonoBehaviour:
   - droneId: D-05
     patientId: P-01
   continueToHospital: 1
+  verbose: 1
+--- !u!114 &1208180818
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1208180812}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1a855a21dbee42aa87c07afbbffaa9fa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Planning.MissionPlanner
+  environment: {fileID: 1208180813}
+  verbose: 1
+--- !u!114 &1208180819
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1208180812}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bc1010a8a3144a2a99e503b366ed0368, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Planning.MissionPlannerFilterDemo
+  environment: {fileID: 1208180813}
+  planner: {fileID: 1208180818}
+  overrides:
+  - droneId: D-02
+    setStatus: 1
+    status: 1
+    setBattery: 0
+    batteryPercent: 100
+    note: already on a task, must be excluded by the status filter
+  - droneId: D-03
+    setStatus: 0
+    status: 0
+    setBattery: 1
+    batteryPercent: 20
+    note: Idle but flat, must be excluded by the range filter
+  - droneId: D-06
+    setStatus: 1
+    status: 3
+    setBattery: 0
+    batteryPercent: 100
+    note: failed drone, must be excluded by the status filter
   verbose: 1
 --- !u!1 &1472396368
 GameObject:
