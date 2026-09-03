@@ -131,6 +131,7 @@ GameObject:
   - component: {fileID: 27455953}
   - component: {fileID: 27455952}
   - component: {fileID: 27455951}
+  - component: {fileID: 27455954}
   m_Layer: 0
   m_Name: D-06
   m_TagString: Untagged
@@ -226,6 +227,22 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 27455949}
   m_Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &27455954
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 27455949}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 554b81f9e4090f94299d69a18e662129, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Fleet.RouteVisualizer
+  showRoute: 1
+  routeColor: {r: 0.2, g: 0.9, b: 1, a: 1}
+  lineWidth: 0.35
+  lineHeight: 0.6
 --- !u!1 &169374773
 GameObject:
   m_ObjectHideFlags: 0
@@ -238,6 +255,7 @@ GameObject:
   - component: {fileID: 169374777}
   - component: {fileID: 169374776}
   - component: {fileID: 169374775}
+  - component: {fileID: 169374778}
   m_Layer: 0
   m_Name: D-04
   m_TagString: Untagged
@@ -333,6 +351,22 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 169374773}
   m_Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &169374778
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 169374773}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 554b81f9e4090f94299d69a18e662129, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Fleet.RouteVisualizer
+  showRoute: 1
+  routeColor: {r: 0.2, g: 0.9, b: 1, a: 1}
+  lineWidth: 0.35
+  lineHeight: 0.6
 --- !u!1 &237319933
 GameObject:
   m_ObjectHideFlags: 0
@@ -345,6 +379,7 @@ GameObject:
   - component: {fileID: 237319937}
   - component: {fileID: 237319936}
   - component: {fileID: 237319935}
+  - component: {fileID: 237319938}
   m_Layer: 0
   m_Name: D-02
   m_TagString: Untagged
@@ -440,6 +475,22 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 237319933}
   m_Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &237319938
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 237319933}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 554b81f9e4090f94299d69a18e662129, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Fleet.RouteVisualizer
+  showRoute: 1
+  routeColor: {r: 0.2, g: 0.9, b: 1, a: 1}
+  lineWidth: 0.35
+  lineHeight: 0.6
 --- !u!1 &261725563
 GameObject:
   m_ObjectHideFlags: 0
@@ -488,6 +539,7 @@ GameObject:
   - component: {fileID: 303874104}
   - component: {fileID: 303874103}
   - component: {fileID: 303874102}
+  - component: {fileID: 303874105}
   m_Layer: 0
   m_Name: D-05
   m_TagString: Untagged
@@ -583,6 +635,22 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 303874100}
   m_Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &303874105
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 303874100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 554b81f9e4090f94299d69a18e662129, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Fleet.RouteVisualizer
+  showRoute: 1
+  routeColor: {r: 0.2, g: 0.9, b: 1, a: 1}
+  lineWidth: 0.35
+  lineHeight: 0.6
 --- !u!1 &413106362
 GameObject:
   m_ObjectHideFlags: 0
@@ -595,6 +663,7 @@ GameObject:
   - component: {fileID: 413106366}
   - component: {fileID: 413106365}
   - component: {fileID: 413106364}
+  - component: {fileID: 413106367}
   m_Layer: 0
   m_Name: D-03
   m_TagString: Untagged
@@ -690,6 +759,22 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 413106362}
   m_Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &413106367
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 413106362}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 554b81f9e4090f94299d69a18e662129, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Fleet.RouteVisualizer
+  showRoute: 1
+  routeColor: {r: 0.2, g: 0.9, b: 1, a: 1}
+  lineWidth: 0.35
+  lineHeight: 0.6
 --- !u!1 &422820739
 GameObject:
   m_ObjectHideFlags: 0
@@ -1601,6 +1686,8 @@ GameObject:
   m_Component:
   - component: {fileID: 1208180814}
   - component: {fileID: 1208180813}
+  - component: {fileID: 1208180816}
+  - component: {fileID: 1208180815}
   m_Layer: 0
   m_Name: MissionSystem
   m_TagString: Untagged
@@ -1646,6 +1733,39 @@ Transform:
   - {fileID: 261725564}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1208180815
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1208180812}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66874007bd0f473408040781f7fd54e0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Environment.SingleDroneNavigationDemo
+  environment: {fileID: 1208180813}
+  droneId: D-01
+  patientId: P-01
+  continueToHospital: 1
+  verbose: 1
+--- !u!114 &1208180816
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1208180812}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cdc4b9db8f938944cbecbd44d1f9c61b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Fleet.FleetSimulator
+  environment: {fileID: 1208180813}
+  enableLocalAvoidance: 0
+  timeScale: 1
+  maxStep: 0.1
 --- !u!1 &1472396368
 GameObject:
   m_ObjectHideFlags: 0
@@ -2310,6 +2430,7 @@ GameObject:
   - component: {fileID: 2051824241}
   - component: {fileID: 2051824240}
   - component: {fileID: 2051824239}
+  - component: {fileID: 2051824242}
   m_Layer: 0
   m_Name: D-01
   m_TagString: Untagged
@@ -2405,6 +2526,22 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2051824237}
   m_Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &2051824242
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2051824237}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 554b81f9e4090f94299d69a18e662129, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Fleet.RouteVisualizer
+  showRoute: 1
+  routeColor: {r: 0.2, g: 0.9, b: 1, a: 1}
+  lineWidth: 0.35
+  lineHeight: 0.6
 --- !u!1 &2054729022
 GameObject:
   m_ObjectHideFlags: 0

@@ -107,6 +107,7 @@ namespace DroneRescue.Environment
 
             foreach (var agent in GetComponentsInChildren<DroneAgent>(true))
             {
+                agent.SetAgentId(_droneAgents.Count);
                 _droneAgents.Add(agent);
                 DroneList.Add(agent.EnsureData());
             }
@@ -324,6 +325,10 @@ namespace DroneRescue.Environment
 
                 var agent = body.AddComponent<DroneAgent>();
                 agent.Configure(def.id, def.startBatteryPercent);
+
+                // Debug aid only: draws the drone's planned route. Creates its line
+                // object at runtime, so nothing extra is saved into the scene.
+                body.AddComponent<RouteVisualizer>();
             }
         }
 

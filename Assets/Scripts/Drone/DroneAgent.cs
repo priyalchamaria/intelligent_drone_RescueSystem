@@ -1,17 +1,20 @@
+using System.Collections.Generic;
 using UnityEngine;
 using DroneRescue.Navigation;
 
 namespace DroneRescue.Fleet
 {
     /// <summary>
-    /// The scene-side placeholder for one drone.
+    /// The scene-side representation of one drone.
     ///
-    /// Its only job in Phase 1 is to own a Drone record and keep that record's
-    /// location in step with the transform. That record is what the Mission
-    /// Planner reads, which is the uplink half of the hub-and-spoke model: state
-    /// flows drone to planner through shared data, never drone to drone.
+    /// It owns two things: the Drone record the Mission Planner reads, and a
+    /// RouteFollower holding the flight state. It does not decide anything. The
+    /// FleetSimulator steps every follower each frame, and this component copies
+    /// the result onto the transform and republishes the position into the shared
+    /// record.
     ///
-    /// No movement here yet. Phase 2 adds path following, Phase 3 adds avoidance.
+    /// That republishing is the uplink half of the hub-and-spoke model: state flows
+    /// drone to planner through shared data, never drone to drone.
     /// </summary>
     public class DroneAgent : MonoBehaviour
     {
@@ -23,15 +26,16 @@ namespace DroneRescue.Fleet
         /// <summary>The shared-state record for this drone. Created on Awake.</summary>
         public Drone Data { get; private set; }
 
+        /// <summary>Flight state: the route, the current waypoint, the velocity.</summary>
+        public RouteFollower Follower { get; private set; }
+
         public string DroneId => droneId;
         public float BodyRadius => bodyRadius;
         public float MaxSpeed => maxSpeed;
 
-        /// <summary>Current velocity. Stays zero through Phase 1.</summary>
-        public Vector3 Velocity { get; protected set; }
-
-        /// <summary>Waypoint currently being steered toward. Unused until Phase 2.</summary>
-        public Vector3 CurrentGoal { get; protected set; }
+        public Vector3 Velocity => Follower != null ? Follower.Velocity : Vector3.zero;
+        public Vector3 CurrentGoal => Follower != null ? Follower.CurrentWaypoint : transform.position;
+        public bool HasRoute => Follower != null && Follower.HasRoute && !Follower.Finished;
 
         private void Awake()
         {
@@ -39,20 +43,33 @@ namespace DroneRescue.Fleet
         }
 
         /// <summary>
-        /// Creates this drone's shared-state record if it does not exist yet, and
-        /// returns it.
+        /// Creates this drone's shared-state record and flight state if they do not
+        /// exist yet, and returns the record.
         ///
         /// Unity does not define the order in which Awake runs across objects, so
         /// the environment cannot assume this drone has already woken when it
         /// collects the fleet. Both sides call this, and whichever runs first
-        /// creates the record.
+        /// creates the state.
         /// </summary>
         public Drone EnsureData()
         {
             if (Data == null)
             {
                 Data = new Drone(droneId, transform.position, startBatteryPercent, DroneStatus.Idle);
-                CurrentGoal = transform.position;
+            }
+
+            if (Follower == null)
+            {
+                Follower = new RouteFollower
+                {
+                    // Assigned properly by the environment during registration. It
+                    // only ever breaks ties between two exactly overlapping drones.
+                    Id = 0,
+                    Position = transform.position,
+                    Altitude = transform.position.y,
+                    Radius = bodyRadius,
+                    MaxSpeed = maxSpeed
+                };
             }
 
             return Data;
@@ -65,12 +82,33 @@ namespace DroneRescue.Fleet
             startBatteryPercent = batteryPercent;
         }
 
-        private void LateUpdate()
+        /// <summary>
+        /// Sets the id used to break avoidance ties. The environment assigns these
+        /// from registration order so a run is reproducible.
+        /// </summary>
+        public void SetAgentId(int id)
         {
-            // Publish live position into shared state. This stands in for a status
-            // uplink; it is not a message to any other drone.
+            EnsureData();
+            Follower.Id = id;
+        }
+
+        /// <summary>Gives this drone a route to fly. Phase 2 assigns these by hand; Phase 5 dispatches them.</summary>
+        public void AssignRoute(IEnumerable<Vector3> waypoints)
+        {
+            EnsureData();
+            Follower.AssignRoute(waypoints);
+        }
+
+        /// <summary>Copies flight state onto the transform and into the shared record.</summary>
+        public void SyncFromFollower()
+        {
+            if (Follower == null)
+                return;
+
+            transform.position = Follower.Position;
+
             if (Data != null)
-                Data.location = transform.position;
+                Data.location = Follower.Position;
         }
 
         /// <summary>
@@ -79,7 +117,8 @@ namespace DroneRescue.Fleet
         /// </summary>
         public AgentData ToAgentData(int index)
         {
-            return new AgentData(index, transform.position, Velocity, bodyRadius, maxSpeed, CurrentGoal);
+            EnsureData();
+            return Follower.Snapshot();
         }
     }
 }
