@@ -82,17 +82,28 @@ namespace DroneRescue.Navigation
         }
 
         /// <summary>True when the world position lies inside the footprint.</summary>
-        public bool Contains(Vector3 world)
+        public bool Contains(Vector3 world) => Contains(world, 0f);
+
+        /// <summary>
+        /// True when the world position lies inside the footprint grown outward by
+        /// <paramref name="margin"/> world units.
+        ///
+        /// The margin is how a standoff distance is expressed without inventing a
+        /// second obstacle representation: the hazard keeps one centre and one size,
+        /// and the caller says how much clear air it wants around it.
+        /// </summary>
+        public bool Contains(Vector3 world, float margin)
         {
             if (shape == ObstacleShape.Box)
             {
-                return Mathf.Abs(world.x - center.x) <= halfExtents.x
-                    && Mathf.Abs(world.z - center.z) <= halfExtents.z;
+                return Mathf.Abs(world.x - center.x) <= halfExtents.x + margin
+                    && Mathf.Abs(world.z - center.z) <= halfExtents.z + margin;
             }
 
             float dx = world.x - center.x;
             float dz = world.z - center.z;
-            return dx * dx + dz * dz <= radius * radius;
+            float grown = radius + margin;
+            return dx * dx + dz * dz <= grown * grown;
         }
     }
 

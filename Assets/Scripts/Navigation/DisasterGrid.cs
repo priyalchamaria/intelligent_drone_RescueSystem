@@ -45,6 +45,22 @@ namespace DroneRescue.Navigation
         /// <summary>Incremented every time the clearance map is rebuilt, so callers can invalidate cached paths.</summary>
         public int Version { get; private set; }
 
+        /// <summary>
+        /// Extra standoff, in world units, baked into the grid around DYNAMIC
+        /// hazards only. Set from NavigationSettings before the obstacles are
+        /// loaded; changing it afterwards needs a Rebake.
+        ///
+        /// WHY ONLY THE DYNAMIC ONES. Rubble is inert. A route that skims a
+        /// collapsed building is a route that skims a collapsed building, and the
+        /// clearance-weighted search already prefers not to. A fire front is not
+        /// inert: it is the one obstacle in this simulation that grows, and the
+        /// grid it was baked into is out of date the moment it does. Treating both
+        /// identically, which is what this class used to do, meant a route could be
+        /// planned flush against the edge of an active fire and still be counted
+        /// safe. The margin buys back the time the fire takes to reach the path.
+        /// </summary>
+        public float DynamicHazardMargin { get; set; }
+
         public DisasterGrid(Vector3 origin, float cellSize, int width, int height, float groundY = 0f)
         {
             Origin = origin;
@@ -129,11 +145,18 @@ namespace DroneRescue.Navigation
         /// Marks every cell whose centre falls inside the obstacle footprint as
         /// blocked. Works for both circular fire zones and boxed rubble, so the
         /// blocked area matches what is actually drawn in the scene.
+        ///
+        /// A dynamic hazard is grown by DynamicHazardMargin first, so the standoff
+        /// costs nothing extra downstream: the brushfire seeds from the widened
+        /// footprint, every free cell's clearance already accounts for it, and the
+        /// path search keeps its distance without needing a rule about fire.
         /// </summary>
         private void Rasterise(Obstacle obstacle)
         {
+            float margin = obstacle.isDynamic ? Mathf.Max(0f, DynamicHazardMargin) : 0f;
+
             WorldToCell(obstacle.center, out var cx, out var cy);
-            int r = Mathf.CeilToInt(obstacle.BoundingRadius / CellSize) + 1;
+            int r = Mathf.CeilToInt((obstacle.BoundingRadius + margin) / CellSize) + 1;
 
             for (int y = cy - r; y <= cy + r; y++)
             {
@@ -142,7 +165,7 @@ namespace DroneRescue.Navigation
                     if (!InBounds(x, y))
                         continue;
 
-                    if (obstacle.Contains(CellToWorld(x, y)))
+                    if (obstacle.Contains(CellToWorld(x, y), margin))
                         _blocked[Index(x, y)] = true;
                 }
             }

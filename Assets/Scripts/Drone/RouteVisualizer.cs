@@ -45,6 +45,10 @@ namespace DroneRescue.Fleet
         [Tooltip("Height above the ground plane to draw the line at. Must clear the hospital and charging pads.")]
         [SerializeField] private float lineHeight = 1.2f;
 
+        [Tooltip("Extra height per drone, so two routes crossing resolve as one line over another " +
+                 "instead of merging. Small on purpose: it only has to break the depth tie.")]
+        [SerializeField, Range(0f, 0.5f)] private float routeLayerSpacing = 0.1f;
+
         [Tooltip("How far the already-flown part of the route is blended toward the ground colour. 0 keeps it live, 1 hides it.")]
         [SerializeField, Range(0f, 1f)] private float flownFade = 0.55f;
 
@@ -56,11 +60,23 @@ namespace DroneRescue.Fleet
         private LineRenderer _flown;
         private LineRenderer _pip;
         private Color _color = Color.cyan;
+        private float _drawHeight;
 
         private void Awake()
         {
             _agent = GetComponent<DroneAgent>();
             _color = overridePaletteColor ? customColor : FleetPalette.RouteColor(_agent.DroneId);
+
+            // Each drone draws on its own layer, a few centimetres apart.
+            //
+            // Two routes crossing at the same height render flush, and the crossing
+            // reads as a single line changing colour rather than as two lines. The
+            // offset is far too small to see as displacement, roughly a couple of
+            // pixels at the camera height this scene is shown from, but it is enough
+            // for the depth buffer to order the two consistently, which is all the
+            // crossing needs to become legible. The layer comes from the same
+            // palette index as the colour, so it is stable across runs.
+            _drawHeight = lineHeight + FleetPalette.RouteIndex(_agent.DroneId) * routeLayerSpacing;
         }
 
         private void LateUpdate()
@@ -131,7 +147,7 @@ namespace DroneRescue.Fleet
             _pip.SetPosition(1, new Vector3(goal.x, 4.0f, goal.z));
         }
 
-        private Vector3 Flatten(Vector3 point) => new Vector3(point.x, lineHeight, point.z);
+        private Vector3 Flatten(Vector3 point) => new Vector3(point.x, _drawHeight, point.z);
 
         private void Hide()
         {

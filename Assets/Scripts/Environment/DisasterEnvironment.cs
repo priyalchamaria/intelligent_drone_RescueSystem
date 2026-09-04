@@ -97,6 +97,11 @@ namespace DroneRescue.Environment
         public void BuildNavigation()
         {
             Grid = new DisasterGrid(config.gridOrigin, config.cellSize, config.gridWidth, config.gridHeight, 0f);
+
+            // Set before the obstacles go in, because loading them bakes the
+            // clearance map and the margin has to be in force by then.
+            Grid.DynamicHazardMargin = config.navigation.dynamicHazardMargin;
+
             Grid.SetObstacles(config.BuildObstacles());
             Navigation = new NavigationEngine(Grid, config.navigation);
         }

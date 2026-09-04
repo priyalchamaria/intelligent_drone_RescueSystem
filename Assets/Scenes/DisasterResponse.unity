@@ -244,6 +244,7 @@ MonoBehaviour:
   customColor: {r: 0.2, g: 0.9, b: 1, a: 1}
   lineWidth: 0.8
   lineHeight: 1.2
+  routeLayerSpacing: 0.1
   flownFade: 0.55
   showGoalPip: 1
 --- !u!1 &169374773
@@ -371,6 +372,7 @@ MonoBehaviour:
   customColor: {r: 0.2, g: 0.9, b: 1, a: 1}
   lineWidth: 0.8
   lineHeight: 1.2
+  routeLayerSpacing: 0.1
   flownFade: 0.55
   showGoalPip: 1
 --- !u!1 &237319933
@@ -498,6 +500,7 @@ MonoBehaviour:
   customColor: {r: 0.2, g: 0.9, b: 1, a: 1}
   lineWidth: 0.8
   lineHeight: 1.2
+  routeLayerSpacing: 0.1
   flownFade: 0.55
   showGoalPip: 1
 --- !u!1 &261725563
@@ -661,6 +664,7 @@ MonoBehaviour:
   customColor: {r: 0.2, g: 0.9, b: 1, a: 1}
   lineWidth: 0.8
   lineHeight: 1.2
+  routeLayerSpacing: 0.1
   flownFade: 0.55
   showGoalPip: 1
 --- !u!1 &413106362
@@ -788,6 +792,7 @@ MonoBehaviour:
   customColor: {r: 0.2, g: 0.9, b: 1, a: 1}
   lineWidth: 0.8
   lineHeight: 1.2
+  routeLayerSpacing: 0.1
   flownFade: 0.55
   showGoalPip: 1
 --- !u!1 &422820739
@@ -2789,6 +2794,7 @@ MonoBehaviour:
   customColor: {r: 0.2, g: 0.9, b: 1, a: 1}
   lineWidth: 0.8
   lineHeight: 1.2
+  routeLayerSpacing: 0.1
   flownFade: 0.55
   showGoalPip: 1
 --- !u!1 &2054729022

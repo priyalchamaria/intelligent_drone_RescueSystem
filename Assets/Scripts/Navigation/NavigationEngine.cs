@@ -18,8 +18,15 @@ namespace DroneRescue.Navigation
         [Tooltip("Stage 1 used every grid tile as a waypoint. Leave off to match it.")]
         public bool simplifyPath = false;
 
-        [Tooltip("Stage 2 addition: how far to search outward when a start or goal sits inside an obstacle.")]
-        public int nearestWalkableSearchRings = 12;
+        [Tooltip("Stage 2 addition: how far to search outward when a start or goal sits inside an obstacle. " +
+                 "Has to exceed the largest hazard radius plus dynamicHazardMargin, or a casualty caught " +
+                 "inside a fire cannot be given a reachable pickup point.")]
+        public int nearestWalkableSearchRings = 20;
+
+        [Tooltip("Stage 2 addition: extra standoff, in world units, baked around DYNAMIC hazards only. " +
+                 "Rubble is inert and can be skimmed; a fire front is spreading and should not be. " +
+                 "Measured on the demo map: 5 buys a 5.3u standoff for 3.7% extra path length.")]
+        [Min(0f)] public float dynamicHazardMargin = 5f;
 
         [Header("Local avoidance (Stage 1: ComputeORCAVelocity)")]
         [Tooltip("Stage 1 buffer added to the combined radii before agent repulsion kicks in.")]

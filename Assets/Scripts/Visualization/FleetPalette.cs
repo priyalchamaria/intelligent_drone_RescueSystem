@@ -53,27 +53,32 @@ namespace DroneRescue.Visualization
 
         public static int RouteColorCount => RouteColors.Length;
 
-        public static Color RouteColor(int index)
-        {
-            if (RouteColors.Length == 0)
-                return Color.white;
+        public static Color RouteColor(int index) => RouteColors.Length == 0 ? Color.white : RouteColors[Wrap(index)];
 
-            int wrapped = ((index % RouteColors.Length) + RouteColors.Length) % RouteColors.Length;
-            return RouteColors[wrapped];
-        }
+        private static int Wrap(int index) =>
+            ((index % RouteColors.Length) + RouteColors.Length) % RouteColors.Length;
 
         /// <summary>
         /// The colour for a drone id such as "D-03".
         ///
         /// Keyed off the trailing number so the mapping is stable no matter what
         /// order the drones registered in: D-03 is the same colour on every run and
-        /// in every screenshot. Ids with no trailing number fall back to a hash,
-        /// which is stable for that id but arbitrary.
+        /// in every screenshot.
         /// </summary>
-        public static Color RouteColor(string droneId)
+        public static Color RouteColor(string droneId) => RouteColor(RouteIndex(droneId));
+
+        /// <summary>
+        /// This drone's slot in the palette, from the trailing number in its id.
+        ///
+        /// Also used as its drawing layer, so that a drone's colour and the height
+        /// its route is drawn at come from the same number and cannot disagree. An
+        /// id with no trailing number falls back to a hash, which is stable for that
+        /// id but arbitrary.
+        /// </summary>
+        public static int RouteIndex(string droneId)
         {
             if (string.IsNullOrEmpty(droneId))
-                return Color.white;
+                return 0;
 
             int digitsEnd = droneId.Length;
             int digitsStart = digitsEnd;
@@ -83,10 +88,10 @@ namespace DroneRescue.Visualization
             if (digitsStart < digitsEnd
                 && int.TryParse(droneId.Substring(digitsStart, digitsEnd - digitsStart), out int number))
             {
-                return RouteColor(number - 1);
+                return Wrap(number - 1);
             }
 
-            return RouteColor(Mathf.Abs(droneId.GetHashCode()));
+            return Wrap(Mathf.Abs(droneId.GetHashCode()));
         }
 
         public static Color ForPriority(PatientPriority priority)

@@ -108,7 +108,8 @@ MonoBehaviour:
   navigation:
     clearanceWeight: 5
     simplifyPath: 0
-    nearestWalkableSearchRings: 12
+    nearestWalkableSearchRings: 20
+    dynamicHazardMargin: 5
     agentBuffer: 1
     obstacleBuffer: 1.5
     waypointTolerance: 0.35
