@@ -55,6 +55,19 @@ namespace DroneRescue.Metrics
         /// <summary>The metrics for the run that just finished, or null before then.</summary>
         public MissionMetrics LastRun { get; private set; }
 
+        /// <summary>
+        /// Simulated seconds the mission has been running, and the figure that stops
+        /// when the mission does.
+        ///
+        /// The simulator's own clock is not this. That one measures the play session
+        /// and keeps counting long after every casualty is delivered, which is the
+        /// right behaviour for a clock and the wrong number to put in front of anyone
+        /// as a mission time. This is maintained beside it so the live display and
+        /// the recorded metric are the same measurement rather than two that agree
+        /// until the run ends.
+        /// </summary>
+        public float MissionSeconds { get; private set; }
+
         /// <summary>The event feed as it stands, newest last. Phase 8's alerts panel reads this.</summary>
         public IReadOnlyList<string> EventFeed => _feed;
 
@@ -118,6 +131,14 @@ namespace DroneRescue.Metrics
             // spent less charge than it did.
             SampleBatteries();
 
+            // Advanced only while the mission is live. Frozen rather than stopped: on
+            // the frame the run completes this has already been set to the elapsed
+            // time CompleteRun is about to record, so the two never disagree. Work
+            // that reopens the run starts it moving again, for the same reason the
+            // reopened run gets a second summary row.
+            if (!_finished)
+                MissionSeconds = Mathf.Max(0f, SimTime() - _startSimTime);
+
             // A NewEmergency raised after the last mission finished reopens the run:
             // the planner clears its reported flag and starts dispatching again. The
             // work done after that point is part of the mission and has to be
@@ -145,6 +166,7 @@ namespace DroneRescue.Metrics
             _startedAtUtc = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
             _runId = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
             _startSimTime = SimTime();
+            MissionSeconds = 0f;
 
             // Ported from Stage 1, which timed its one mission the same way. The
             // wall clock is not the mission's own clock, so it is recorded beside

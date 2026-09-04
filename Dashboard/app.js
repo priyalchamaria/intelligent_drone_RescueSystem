@@ -80,7 +80,9 @@ function render(s) {
     $('linkText').textContent = complete ? 'run complete' : (s.runStarted ? 'live' : 'standing by');
 
     $('scenario').textContent = s.scenario + '  ·  updated ' + s.generatedAt;
-    $('clock').textContent = num(s.simTime) + 's';
+    // The mission's clock, not the session's: it stops when the run does, and
+    // matches the completion time the analytics tab reports.
+    $('clock').textContent = num(s.missionSeconds !== undefined ? s.missionSeconds : s.simTime) + 's';
     $('statDispatch').textContent = s.dispatches;
     $('statReassign').textContent = s.reassignments;
 

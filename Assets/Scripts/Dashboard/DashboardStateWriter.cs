@@ -155,6 +155,8 @@ namespace DroneRescue.Dashboard
             Comma();
             Field("simTime", SimTime());
             Comma();
+            Field("missionSeconds", MissionSeconds());
+            Comma();
             Field("playing", Application.isPlaying);
             Comma();
             Field("runStarted", planner.RunStarted);
@@ -637,6 +639,17 @@ namespace DroneRescue.Dashboard
         }
 
         private float SimTime() => simulator != null ? simulator.SimulatedTime : Time.timeSinceLevelLoad;
+
+        /// <summary>
+        /// The mission's own clock, which stops when the mission does.
+        ///
+        /// Taken from the recorder so the header and the analytics tab show one
+        /// number rather than two that drift apart the moment a run ends. Without a
+        /// recorder there is nothing keeping that clock, and the session clock is
+        /// published instead: wrong after the run finishes, but present, which is the
+        /// better of the two failures for a component that is only an observer.
+        /// </summary>
+        private float MissionSeconds() => recorder != null ? recorder.MissionSeconds : SimTime();
 
         // -----------------------------------------------------------------
         // A very small JSON writer
