@@ -1715,6 +1715,7 @@ GameObject:
   - component: {fileID: 1208180821}
   - component: {fileID: 1208180823}
   - component: {fileID: 1208180822}
+  - component: {fileID: 1208180824}
   m_Layer: 0
   m_Name: MissionSystem
   m_TagString: Untagged
@@ -1987,6 +1988,26 @@ MonoBehaviour:
   restingAlpha: 0.66
   siteScale: 0.85
   siteAlpha: 0.7
+--- !u!114 &1208180824
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1208180812}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c2ccd7e7a3701a64dbbcced4ec8de17f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Metrics.MissionRecorder
+  environment: {fileID: 1208180813}
+  planner: {fileID: 1208180818}
+  simulator: {fileID: 1208180816}
+  outputDirectory: 
+  writeSummaryCsv: 1
+  writeEventFeed: 1
+  writePatientCsv: 1
+  dispatchMode: Scored
 --- !u!1 &1472396368
 GameObject:
   m_ObjectHideFlags: 0

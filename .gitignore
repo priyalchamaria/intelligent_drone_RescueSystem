@@ -46,3 +46,6 @@ Thumbs.db
 # Project runtime output
 /MissionLogs/
 /Dashboard/data/
+
+# Phase 7 metrics output. Regenerated on every run; force-add a file if you want to keep one as evidence.
+/MissionLogs/

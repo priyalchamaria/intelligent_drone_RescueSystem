@@ -66,6 +66,13 @@ namespace DroneRescue.Environment
         /// <summary>Simulated time a drone first arrived. Negative until it happens.</summary>
         public float reachedAtTime = -1f;
 
+        /// <summary>
+        /// Simulated time this casualty was handed over at a hospital. Negative
+        /// until it happens, so a run that ends with somebody still waiting is
+        /// distinguishable from one where everybody was delivered at time zero.
+        /// </summary>
+        public float deliveredAtTime = -1f;
+
         /// <summary>Id of the drone currently assigned, or null when unassigned.</summary>
         public string assignedDroneId;
 

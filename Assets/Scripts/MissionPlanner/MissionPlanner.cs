@@ -89,6 +89,25 @@ namespace DroneRescue.Planning
         /// <summary>Dispatches issued this run, reassignments included. Phase 7 metric input.</summary>
         public int DispatchCount { get; private set; }
 
+        /// <summary>
+        /// Times a task already assigned was taken back and re-planned mid-mission.
+        /// Part 3's reassignment count, and one of the two numbers that separates a
+        /// run with dynamic events from one without.
+        /// </summary>
+        public int ReassignCount { get; private set; }
+
+        /// <summary>True once the planner has taken charge of the scenario.</summary>
+        public bool RunStarted => _runStarted;
+
+        /// <summary>
+        /// True once the queue is empty and no mission is still flying.
+        ///
+        /// Public so that metrics can watch for the run ending without the planner
+        /// needing to know that metrics exist. A new casualty reopens it, because
+        /// Push clears the reported flag.
+        /// </summary>
+        public bool RunComplete => _runReported;
+
         /// <summary>Patients already put into the queue, so re-syncing cannot double-queue anyone.</summary>
         private readonly HashSet<Patient> _queued = new HashSet<Patient>();
 
@@ -151,6 +170,9 @@ namespace DroneRescue.Planning
             Debug.Log("[Planner] Weights: W1(distance)=" + w1Distance
                       + " W2(batteryUtilization)=" + w2BatteryUtilization
                       + " W3(risk)=" + w3Risk + ". Lowest score wins.");
+
+            RescueFeed.RaiseNote("Earthquake: " + environment.Patients.Count + " casualties detected, "
+                                 + environment.DroneList.Count + " drones on station");
         }
 
         // -----------------------------------------------------------------
@@ -564,6 +586,7 @@ namespace DroneRescue.Planning
         {
             var drone = mission.drone;
             mission.patient.state = PatientState.Delivered;
+            mission.patient.deliveredAtTime = Time.time;
 
             Debug.Log("[Planner] " + mission.droneId + " DELIVERED " + mission.patient.id
                       + " to hospital. Battery now " + drone.batteryPercent.ToString("F0") + "%.");
@@ -601,6 +624,8 @@ namespace DroneRescue.Planning
                         Debug.LogWarning("[Planner] " + drone.id + " cannot reach a charging pad: needs "
                                          + toPad.ToString("F1") + "u but has " + remaining.ToString("F1")
                                          + "u of range. Parking where it landed, still Charging.");
+
+                        RescueFeed.RaiseNote(drone.id + " cannot reach a charging pad, parked where it landed");
                     }
                 }
 
@@ -666,6 +691,8 @@ namespace DroneRescue.Planning
             var patient = mission.patient;
             if (patient == null || patient.state == PatientState.Delivered)
                 return;
+
+            ReassignCount++;
 
             patient.state = PatientState.Waiting;
             patient.assignedDroneId = null;
@@ -853,6 +880,9 @@ namespace DroneRescue.Planning
                       + " | fleet battery avg=" + (totalBattery / environment.DroneList.Count).ToString("F0") + "%"
                       + " min=" + minBattery.ToString("F0") + "%");
 
+            RescueFeed.RaiseNote("MISSION COMPLETE: " + delivered + " of "
+                                 + environment.Patients.Count + " casualties delivered");
+
             if (simulator != null)
             {
                 var collisions = simulator.Collisions;
@@ -873,6 +903,8 @@ namespace DroneRescue.Planning
             Debug.LogWarning("[Planner] " + patient.id + " [" + patient.priority
                              + "] has no feasible drone. Holding at the head of the queue, retrying every "
                              + retryInterval.ToString("F0") + "s.");
+
+            RescueFeed.RaiseNote(patient.id + " [" + patient.priority + "] waiting: no drone can reach it");
         }
 
         private void LogDecisionTable(Patient patient, List<DroneEvaluation> all, int feasibleCount, int winnerIndex)
