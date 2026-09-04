@@ -1,95 +1,196 @@
-using System.Collections.Generic;
 using UnityEngine;
+using DroneRescue.Visualization;
 
 namespace DroneRescue.Fleet
 {
     /// <summary>
-    /// Draws a drone's planned route as a line, so the flown path can be compared
-    /// against the planned one by eye.
+    /// Draws a drone's route so the flown path can be compared against the planned
+    /// one by eye.
     ///
-    /// Purely a debug aid. The line object and its material are created at runtime
-    /// and never saved into the scene, so nothing here touches the navigation
-    /// logic or the scene asset.
+    /// Purely a debug aid. The line objects and their materials are created at
+    /// runtime and never saved into the scene, so nothing here touches the
+    /// navigation logic or the scene asset.
+    ///
+    /// THE ROUTE IS DRAWN IN TWO PIECES, WHICH IS THE POINT OF THIS CLASS. A route
+    /// is planned once, from wherever the drone happened to be standing when it was
+    /// dispatched, and it does not move afterwards. Drawing that list of waypoints
+    /// as one line leaves the near end pinned to a launch point that nothing marks
+    /// any more, so on screen the line starts in empty air and the drone appears to
+    /// be sitting on top of it rather than flying it.
+    ///
+    /// So: the part already flown is drawn dark, the part still to fly is drawn
+    /// bright, and the two meet at the drone's live position. The bright line is
+    /// therefore anchored to a visible object at every instant of the run, and the
+    /// dark line still shows where the drone came from. The bright line also tapers
+    /// from the drone toward the goal, which gives it a direction, and a short
+    /// upright pip marks the goal so the far end lands on something too.
+    ///
+    /// Each drone gets its own colour from FleetPalette, keyed off its id, so
+    /// crossing routes stay separable and match the caption above the drone and the
+    /// corner legend.
     /// </summary>
     [RequireComponent(typeof(DroneAgent))]
     public class RouteVisualizer : MonoBehaviour
     {
         [SerializeField] private bool showRoute = true;
-        [SerializeField] private Color routeColor = new Color(0.2f, 0.9f, 1f, 1f);
+
+        [Tooltip("Leave off to use this drone's colour from FleetPalette, which is what the legend shows.")]
+        [SerializeField] private bool overridePaletteColor;
+
+        [SerializeField] private Color customColor = new Color(0.2f, 0.9f, 1f, 1f);
+
         [SerializeField] private float lineWidth = 0.35f;
 
         [Tooltip("Height above the ground plane to draw the line at.")]
         [SerializeField] private float lineHeight = 0.6f;
 
+        [Tooltip("How dark the already-flown part of the route is drawn, as a fraction of the live colour.")]
+        [SerializeField, Range(0.05f, 1f)] private float flownBrightness = 0.34f;
+
+        [Tooltip("Draw a short upright marker where the current leg ends.")]
+        [SerializeField] private bool showGoalPip = true;
+
         private DroneAgent _agent;
-        private LineRenderer _line;
-        private int _lastRouteVersion = -1;
+        private LineRenderer _ahead;
+        private LineRenderer _flown;
+        private LineRenderer _pip;
+        private Color _color = Color.cyan;
 
         private void Awake()
         {
             _agent = GetComponent<DroneAgent>();
+            _color = overridePaletteColor ? customColor : FleetPalette.RouteColor(_agent.DroneId);
         }
 
         private void LateUpdate()
         {
-            if (!showRoute || _agent.Follower == null)
-                return;
+            var follower = _agent != null ? _agent.Follower : null;
 
-            var route = _agent.Follower.Route;
-            if (route == null || route.Count < 2)
+            if (!showRoute || follower == null || !follower.HasRoute || follower.Route.Count < 1)
             {
-                if (_line != null)
-                    _line.enabled = false;
+                Hide();
                 return;
             }
 
-            EnsureLine();
-            _line.enabled = true;
+            EnsureLines();
 
-            // Redraw only when the route actually changes, not every frame.
-            int version = route.Count * 397 ^ _agent.Follower.WaypointCount;
-            if (version == _lastRouteVersion)
-                return;
+            var route = follower.Route;
+            int next = Mathf.Clamp(follower.WaypointIndex, 0, route.Count);
+            Vector3 here = Flatten(transform.position);
 
-            _lastRouteVersion = version;
-            _line.positionCount = route.Count;
-            for (int i = 0; i < route.Count; i++)
-                _line.SetPosition(i, new Vector3(route[i].x, lineHeight, route[i].z));
+            DrawFlown(route, next, here);
+            DrawAhead(route, next, here);
+            DrawPip(route);
         }
 
-        private void EnsureLine()
+        /// <summary>Launch point through the last waypoint passed, then on to the drone itself.</summary>
+        private void DrawFlown(System.Collections.Generic.IReadOnlyList<Vector3> route, int next, Vector3 here)
         {
-            if (_line != null)
+            _flown.enabled = true;
+            _flown.positionCount = next + 1;
+
+            for (int i = 0; i < next; i++)
+                _flown.SetPosition(i, Flatten(route[i]));
+
+            _flown.SetPosition(next, here);
+        }
+
+        /// <summary>
+        /// The drone itself, then every waypoint still ahead of it. Starting at the
+        /// drone rather than at the next waypoint is what keeps the bright line
+        /// attached to something visible.
+        /// </summary>
+        private void DrawAhead(System.Collections.Generic.IReadOnlyList<Vector3> route, int next, Vector3 here)
+        {
+            int remaining = route.Count - next;
+            if (remaining <= 0)
+            {
+                // Arrived. There is nothing left to fly, so only the trail remains.
+                _ahead.enabled = false;
+                return;
+            }
+
+            _ahead.enabled = true;
+            _ahead.positionCount = remaining + 1;
+            _ahead.SetPosition(0, here);
+
+            for (int i = 0; i < remaining; i++)
+                _ahead.SetPosition(i + 1, Flatten(route[next + i]));
+        }
+
+        private void DrawPip(System.Collections.Generic.IReadOnlyList<Vector3> route)
+        {
+            if (!showGoalPip || _pip == null)
                 return;
 
-            var go = new GameObject(name + "_Route");
+            var goal = route[route.Count - 1];
+            _pip.enabled = _ahead.enabled;
+            _pip.positionCount = 2;
+            _pip.SetPosition(0, new Vector3(goal.x, 0.15f, goal.z));
+            _pip.SetPosition(1, new Vector3(goal.x, 3.4f, goal.z));
+        }
+
+        private Vector3 Flatten(Vector3 point) => new Vector3(point.x, lineHeight, point.z);
+
+        private void Hide()
+        {
+            if (_ahead != null) _ahead.enabled = false;
+            if (_flown != null) _flown.enabled = false;
+            if (_pip != null) _pip.enabled = false;
+        }
+
+        private void EnsureLines()
+        {
+            if (_ahead != null)
+                return;
+
+            _ahead = CreateLine("_Route", _color, lineWidth);
+
+            // Tapered from the drone toward the goal, so which way the drone is
+            // going is readable from a still frame.
+            _ahead.widthCurve = new AnimationCurve(new Keyframe(0f, 1f), new Keyframe(1f, 0.45f));
+            _ahead.widthMultiplier = lineWidth;
+
+            // Darkened rather than faded: the unlit material these lines use is
+            // opaque, so an alpha here would simply be ignored.
+            _flown = CreateLine("_RouteFlown", FleetPalette.Dimmed(_color, flownBrightness, 1f), lineWidth * 0.5f);
+
+            if (showGoalPip)
+                _pip = CreateLine("_RouteGoal", _color, lineWidth * 0.8f);
+        }
+
+        private LineRenderer CreateLine(string suffix, Color color, float width)
+        {
+            var go = new GameObject(name + suffix);
             go.transform.SetParent(transform.parent, false);
             go.hideFlags = HideFlags.DontSave;
 
-            _line = go.AddComponent<LineRenderer>();
-            _line.useWorldSpace = true;
-            _line.widthMultiplier = lineWidth;
-            _line.numCornerVertices = 2;
-            _line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            _line.receiveShadows = false;
+            var line = go.AddComponent<LineRenderer>();
+            line.useWorldSpace = true;
+            line.widthMultiplier = width;
+            line.numCornerVertices = 2;
+            line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            line.receiveShadows = false;
 
             var shader = Shader.Find("Universal Render Pipeline/Unlit");
             if (shader == null)
                 shader = Shader.Find("Sprites/Default");
 
             var mat = new Material(shader) { hideFlags = HideFlags.DontSave };
-            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", routeColor);
-            if (mat.HasProperty("_Color")) mat.SetColor("_Color", routeColor);
+            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
+            if (mat.HasProperty("_Color")) mat.SetColor("_Color", color);
 
-            _line.material = mat;
-            _line.startColor = routeColor;
-            _line.endColor = routeColor;
+            line.material = mat;
+            line.startColor = color;
+            line.endColor = color;
+            return line;
         }
 
         private void OnDestroy()
         {
-            if (_line != null)
-                Destroy(_line.gameObject);
+            if (_ahead != null) Destroy(_ahead.gameObject);
+            if (_flown != null) Destroy(_flown.gameObject);
+            if (_pip != null) Destroy(_pip.gameObject);
         }
     }
 }

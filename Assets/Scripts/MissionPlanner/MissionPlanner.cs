@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using DroneRescue.Environment;
 using DroneRescue.Fleet;
+using DroneRescue.Visualization;
 
 namespace DroneRescue.Planning
 {
@@ -491,6 +492,11 @@ namespace DroneRescue.Planning
                       + " [" + patient.priority + "] | " + decision.ExplainScore()
                       + " | waypoints=" + route.Count);
 
+            // Announced for the on-screen mission log. One-way and ignored when
+            // nothing is listening; see RescueFeed.
+            RescueFeed.RaiseNote(drone.id + " dispatched to " + patient.id
+                                 + " (" + patient.priority + ")");
+
             return assignment;
         }
 
@@ -543,6 +549,8 @@ namespace DroneRescue.Planning
             Debug.Log("[Planner] " + mission.droneId + " reached " + patient.id
                       + " after " + (Time.time - mission.dispatchedAtTime).ToString("F1") + "s.");
 
+            RescueFeed.RaiseNote(mission.droneId + " reached " + patient.id + ", carrying to hospital");
+
             // Second leg: patient to hospital. Each drone aims at its own stand on
             // the landing ring, because a shared centre point makes the first drone
             // to land block the pad for everyone behind it.
@@ -559,6 +567,9 @@ namespace DroneRescue.Planning
 
             Debug.Log("[Planner] " + mission.droneId + " DELIVERED " + mission.patient.id
                       + " to hospital. Battery now " + drone.batteryPercent.ToString("F0") + "%.");
+
+            RescueFeed.RaiseNote(mission.droneId + " delivered " + mission.patient.id
+                                 + "  ·  battery " + drone.batteryPercent.ToString("F0") + "%");
 
             // Part 1 Step 4: Idle on completion, or Charging if the battery is now low.
             if (drone.batteryPercent < lowBatteryPercent)
@@ -600,6 +611,8 @@ namespace DroneRescue.Planning
             drone.status = DroneStatus.Idle;
             mission.state = MissionState.Complete;
             Debug.Log("[Planner] " + drone.id + " released -> Idle.");
+
+            RescueFeed.RaiseNote(drone.id + " idle, available for dispatch");
         }
 
         /// <summary>
@@ -664,6 +677,8 @@ namespace DroneRescue.Planning
 
             Debug.Log("[Planner] REASSIGN " + patient.id + ": " + mission.droneId
                       + " can no longer serve it, patient requeued.");
+
+            RescueFeed.RaiseNote(patient.id + " requeued, " + mission.droneId + " stood down");
         }
 
         /// <summary>The live mission a drone is flying, or null when it has none.</summary>
@@ -706,6 +721,10 @@ namespace DroneRescue.Planning
             Debug.Log("[Event] BATTERY LOW: " + drone.id + " at "
                       + drone.batteryPercent.ToString("F0") + "% -> Charging.");
 
+            // One of the four events that earns a full-width on-screen banner.
+            RescueFeed.RaiseAlert(AlertKind.BatteryLow, drone.id + " battery low at "
+                                  + drone.batteryPercent.ToString("F0") + "%  ·  task reassigned");
+
             drone.status = DroneStatus.Charging;
             Reassign(ActiveMissionOf(drone.id));
         }
@@ -723,6 +742,8 @@ namespace DroneRescue.Planning
                 return;
 
             Debug.Log("[Event] DRONE FAILED: " + drone.id + " -> Offline.");
+
+            RescueFeed.RaiseAlert(AlertKind.DroneFailed, drone.id + " has failed  ·  task reassigned");
 
             drone.status = DroneStatus.Offline;
             Reassign(ActiveMissionOf(drone.id));
@@ -743,6 +764,9 @@ namespace DroneRescue.Planning
 
             Debug.Log("[Event] NEW EMERGENCY: " + patient.id + " [" + patient.priority
                       + "] detected at " + patient.location + ".");
+
+            RescueFeed.RaiseAlert(AlertKind.NewEmergency, "New casualty " + patient.id
+                                  + " detected  ·  " + patient.priority + "  ·  queued");
 
             Push(patient);
 

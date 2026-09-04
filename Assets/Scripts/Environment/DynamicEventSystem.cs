@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using DroneRescue.Fleet;
 using DroneRescue.Planning;
+using DroneRescue.Visualization;
 
 namespace DroneRescue.Environment
 {
@@ -207,6 +208,12 @@ namespace DroneRescue.Environment
         {
             Debug.Log("[Event] FIRE SPREAD: new zone radius " + radius.ToString("F1")
                       + "u at " + center + ". Obstacle map rebaked, re-pathing only, no re-scoring.");
+
+            // The other three events raise their banner inside the planner, where
+            // every path that fires them passes through. FireSpread has no such
+            // single planner entry point, so it announces from here.
+            RescueFeed.RaiseAlert(AlertKind.FireSpread, "Fire zone spreading  ·  radius "
+                                  + radius.ToString("F0") + "u  ·  active routes re-planned");
 
             environment.SpreadFire(center, radius);
 

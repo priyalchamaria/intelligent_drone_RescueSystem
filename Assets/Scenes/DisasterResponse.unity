@@ -240,9 +240,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Fleet.RouteVisualizer
   showRoute: 1
-  routeColor: {r: 0.2, g: 0.9, b: 1, a: 1}
+  overridePaletteColor: 0
+  customColor: {r: 0.2, g: 0.9, b: 1, a: 1}
   lineWidth: 0.35
   lineHeight: 0.6
+  flownBrightness: 0.34
+  showGoalPip: 1
 --- !u!1 &169374773
 GameObject:
   m_ObjectHideFlags: 0
@@ -364,9 +367,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Fleet.RouteVisualizer
   showRoute: 1
-  routeColor: {r: 0.2, g: 0.9, b: 1, a: 1}
+  overridePaletteColor: 0
+  customColor: {r: 0.2, g: 0.9, b: 1, a: 1}
   lineWidth: 0.35
   lineHeight: 0.6
+  flownBrightness: 0.34
+  showGoalPip: 1
 --- !u!1 &237319933
 GameObject:
   m_ObjectHideFlags: 0
@@ -488,9 +494,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Fleet.RouteVisualizer
   showRoute: 1
-  routeColor: {r: 0.2, g: 0.9, b: 1, a: 1}
+  overridePaletteColor: 0
+  customColor: {r: 0.2, g: 0.9, b: 1, a: 1}
   lineWidth: 0.35
   lineHeight: 0.6
+  flownBrightness: 0.34
+  showGoalPip: 1
 --- !u!1 &261725563
 GameObject:
   m_ObjectHideFlags: 0
@@ -648,9 +657,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Fleet.RouteVisualizer
   showRoute: 1
-  routeColor: {r: 0.2, g: 0.9, b: 1, a: 1}
+  overridePaletteColor: 0
+  customColor: {r: 0.2, g: 0.9, b: 1, a: 1}
   lineWidth: 0.35
   lineHeight: 0.6
+  flownBrightness: 0.34
+  showGoalPip: 1
 --- !u!1 &413106362
 GameObject:
   m_ObjectHideFlags: 0
@@ -772,9 +784,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Fleet.RouteVisualizer
   showRoute: 1
-  routeColor: {r: 0.2, g: 0.9, b: 1, a: 1}
+  overridePaletteColor: 0
+  customColor: {r: 0.2, g: 0.9, b: 1, a: 1}
   lineWidth: 0.35
   lineHeight: 0.6
+  flownBrightness: 0.34
+  showGoalPip: 1
 --- !u!1 &422820739
 GameObject:
   m_ObjectHideFlags: 0
@@ -1693,6 +1708,8 @@ GameObject:
   - component: {fileID: 1208180819}
   - component: {fileID: 1208180820}
   - component: {fileID: 1208180821}
+  - component: {fileID: 1208180823}
+  - component: {fileID: 1208180822}
   m_Layer: 0
   m_Name: MissionSystem
   m_TagString: Untagged
@@ -1921,6 +1938,46 @@ MonoBehaviour:
     fired: 0
   watchBatteries: 0
   criticalBatteryPercent: 15
+--- !u!114 &1208180822
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1208180812}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5710a33a8ada3714da8a7004d1ef476f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Visualization.MissionHudOverlay
+  environment: {fileID: 1208180813}
+  showBanners: 1
+  showLog: 1
+  showLegend: 1
+  bannerSeconds: 2.5
+  logLines: 9
+--- !u!114 &1208180823
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1208180812}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0b23c6c398cdf594887fb09fe4319d06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Visualization.SceneLabelDirector
+  environment: {fileID: 1208180813}
+  labelDrones: 1
+  labelPatients: 1
+  labelSites: 1
+  droneLabelHeight: 2.6
+  patientLabelHeight: 3
+  siteLabelHeight: 4
+  droneFontSize: 30
+  patientFontSize: 26
+  siteFontSize: 26
 --- !u!1 &1472396368
 GameObject:
   m_ObjectHideFlags: 0
@@ -2201,6 +2258,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1725388721}
   - component: {fileID: 1725388720}
+  - component: {fileID: 1725388722}
   m_Layer: 0
   m_Name: Directional Light
   m_TagString: Untagged
@@ -2288,6 +2346,35 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1725388722
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1725388719}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.UniversalAdditionalLightData
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_CustomShadowLayers: 0
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
+  m_RenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_ShadowRenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_Version: 4
+  m_LightLayerMask: 1
+  m_ShadowLayerMask: 1
+  m_RenderingLayers: 1
+  m_ShadowRenderingLayers: 1
 --- !u!1 &1760561610
 GameObject:
   m_ObjectHideFlags: 0
@@ -2694,9 +2781,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Fleet.RouteVisualizer
   showRoute: 1
-  routeColor: {r: 0.2, g: 0.9, b: 1, a: 1}
+  overridePaletteColor: 0
+  customColor: {r: 0.2, g: 0.9, b: 1, a: 1}
   lineWidth: 0.35
   lineHeight: 0.6
+  flownBrightness: 0.34
+  showGoalPip: 1
 --- !u!1 &2054729022
 GameObject:
   m_ObjectHideFlags: 0
