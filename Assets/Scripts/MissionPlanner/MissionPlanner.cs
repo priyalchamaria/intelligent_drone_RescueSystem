@@ -607,38 +607,14 @@ namespace DroneRescue.Planning
             if (drone.batteryPercent < lowBatteryPercent)
             {
                 drone.status = DroneStatus.Charging;
+                mission.state = MissionState.Complete;
+
                 Debug.Log("[Planner] " + drone.id + " battery low at "
                           + drone.batteryPercent.ToString("F0") + "% -> Charging, out of the dispatch pool.");
 
-                if (flyToChargerWhenLow)
-                {
-                    Vector3 pad = environment.NearestChargingStation(drone.location);
-                    Vector3 stand = environment.LandingSlot(pad, mission.landingSlot, environment.DroneList.Count);
-
-                    // The Part 1 range budget covers drone to patient to hospital and
-                    // nothing else, so the trip to a pad has to be afforded out of
-                    // what is left. Same test as the Step 2 hard filter: fly only if
-                    // the remaining range actually reaches. Sending it regardless is
-                    // how a drone ends a run stranded at 0 percent.
-                    float toPad = FlatDistance(drone.location, stand);
-                    float remaining = drone.Range(MaxRange);
-
-                    if (toPad <= remaining)
-                    {
-                        if (StartLeg(mission, MissionLeg.ToChargingStation, stand, "charging pad"))
-                            return;
-                    }
-                    else
-                    {
-                        Debug.LogWarning("[Planner] " + drone.id + " cannot reach a charging pad: needs "
-                                         + toPad.ToString("F1") + "u but has " + remaining.ToString("F1")
-                                         + "u of range. Parking where it landed, still Charging.");
-
-                        RescueFeed.RaiseNote(drone.id + " cannot reach a charging pad, parked where it landed");
-                    }
-                }
-
-                mission.state = MissionState.Complete;
+                // The rescue is over. Getting to a pad is a separate trip, and the
+                // same trip the BatteryLow event asks for: see SendToCharger.
+                SendToCharger(drone);
                 return;
             }
 
@@ -647,6 +623,82 @@ namespace DroneRescue.Planning
             Debug.Log("[Planner] " + drone.id + " released -> Idle.");
 
             RescueFeed.RaiseNote(drone.id + " idle, available for dispatch");
+        }
+
+        /// <summary>
+        /// Sends a drone that has just dropped out of the dispatch pool to the nearest
+        /// charging pad it can still reach, or leaves it charging where it stands when
+        /// no pad is in range.
+        ///
+        /// ONE MECHANISM, BOTH TRIGGERS. A drone reaches Charging two ways: it lands a
+        /// rescue with too little left to take another (OnPatientDelivered), or the
+        /// BatteryLow event takes it out mid-flight (OnBatteryLow). What should happen
+        /// next is the same question either way, so it is asked in one place. Before
+        /// this, only the first path asked it, and a drone taken out by the event
+        /// charged wherever it happened to be even with a pad well within reach.
+        ///
+        /// The trip goes on the board as its own assignment rather than as a third leg
+        /// of the rescue before it, because after BatteryLow that rescue has been
+        /// handed to another drone and is no longer this one's to extend. It is routed
+        /// by the same FindSafePath a dispatch uses and flown by the same executor;
+        /// nothing downstream treats it specially.
+        /// </summary>
+        private void SendToCharger(Drone drone)
+        {
+            if (drone == null || environment == null || !flyToChargerWhenLow)
+                return;
+
+            Vector3 pad = environment.NearestChargingStation(drone.location);
+            int slot = IndexOfDrone(drone);
+            Vector3 stand = environment.LandingSlot(pad, slot, environment.DroneList.Count);
+
+            // The Part 1 range budget covers drone to patient to hospital and nothing
+            // else, so the trip to a pad has to be afforded out of what is left. Same
+            // test as the Step 2 hard filter: fly only if the remaining range actually
+            // reaches. Sending it regardless is how a drone ends a run stranded short
+            // of the pad instead of charging where it stopped.
+            float toPad = FlatDistance(drone.location, stand);
+            float remaining = drone.Range(MaxRange);
+
+            if (toPad > remaining)
+            {
+                Debug.LogWarning("[Planner] " + drone.id + " cannot reach a charging pad: needs "
+                                 + toPad.ToString("F1") + "u but has " + remaining.ToString("F1")
+                                 + "u of range. Charging where it stands.");
+
+                RescueFeed.RaiseNote(drone.id + " cannot reach a charging pad, charging where it stands");
+                return;
+            }
+
+            var route = environment.Navigation.FindSafePath(drone.location, stand);
+
+            if (route.Count == 0)
+            {
+                Debug.LogWarning("[Planner] No route from " + drone.id
+                                 + " to a charging pad. Charging where it stands.");
+
+                RescueFeed.RaiseNote(drone.id + " has no route to a charging pad, charging where it stands");
+                return;
+            }
+
+            environment.Assignments.Add(new MissionAssignment
+            {
+                drone = drone,
+                droneId = drone.id,
+                patient = null,
+                leg = MissionLeg.ToChargingStation,
+                state = MissionState.AwaitingRoute,
+                pendingRoute = route,
+                legGoal = stand,
+                arrived = false,
+                dispatchedAtTime = Time.time,
+                landingSlot = slot
+            });
+
+            Debug.Log("[Planner] " + drone.id + " flying to a charging pad "
+                      + toPad.ToString("F1") + "u away, on " + remaining.ToString("F1") + "u of range.");
+
+            RescueFeed.RaiseNote(drone.id + " heading to a charging pad");
         }
 
         /// <summary>
@@ -824,7 +876,12 @@ namespace DroneRescue.Planning
                                   + drone.batteryPercent.ToString("F0") + "%  ·  task reassigned");
 
             drone.status = DroneStatus.Charging;
+
+            // Reassign first, then charge. The executor reads the board in order, so
+            // the abandoned rescue clears this drone's route before the charging trip
+            // puts a new one on it.
             Reassign(ActiveMissionOf(drone.id));
+            SendToCharger(drone);
         }
 
         /// <summary>
