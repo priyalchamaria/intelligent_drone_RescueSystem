@@ -242,9 +242,9 @@ MonoBehaviour:
   showRoute: 1
   overridePaletteColor: 0
   customColor: {r: 0.2, g: 0.9, b: 1, a: 1}
-  lineWidth: 0.35
-  lineHeight: 0.6
-  flownBrightness: 0.34
+  lineWidth: 0.8
+  lineHeight: 1.2
+  flownFade: 0.55
   showGoalPip: 1
 --- !u!1 &169374773
 GameObject:
@@ -369,9 +369,9 @@ MonoBehaviour:
   showRoute: 1
   overridePaletteColor: 0
   customColor: {r: 0.2, g: 0.9, b: 1, a: 1}
-  lineWidth: 0.35
-  lineHeight: 0.6
-  flownBrightness: 0.34
+  lineWidth: 0.8
+  lineHeight: 1.2
+  flownFade: 0.55
   showGoalPip: 1
 --- !u!1 &237319933
 GameObject:
@@ -496,9 +496,9 @@ MonoBehaviour:
   showRoute: 1
   overridePaletteColor: 0
   customColor: {r: 0.2, g: 0.9, b: 1, a: 1}
-  lineWidth: 0.35
-  lineHeight: 0.6
-  flownBrightness: 0.34
+  lineWidth: 0.8
+  lineHeight: 1.2
+  flownFade: 0.55
   showGoalPip: 1
 --- !u!1 &261725563
 GameObject:
@@ -659,9 +659,9 @@ MonoBehaviour:
   showRoute: 1
   overridePaletteColor: 0
   customColor: {r: 0.2, g: 0.9, b: 1, a: 1}
-  lineWidth: 0.35
-  lineHeight: 0.6
-  flownBrightness: 0.34
+  lineWidth: 0.8
+  lineHeight: 1.2
+  flownFade: 0.55
   showGoalPip: 1
 --- !u!1 &413106362
 GameObject:
@@ -786,9 +786,9 @@ MonoBehaviour:
   showRoute: 1
   overridePaletteColor: 0
   customColor: {r: 0.2, g: 0.9, b: 1, a: 1}
-  lineWidth: 0.35
-  lineHeight: 0.6
-  flownBrightness: 0.34
+  lineWidth: 0.8
+  lineHeight: 1.2
+  flownFade: 0.55
   showGoalPip: 1
 --- !u!1 &422820739
 GameObject:
@@ -1972,12 +1972,16 @@ MonoBehaviour:
   labelDrones: 1
   labelPatients: 1
   labelSites: 1
-  droneLabelHeight: 2.6
-  patientLabelHeight: 3
-  siteLabelHeight: 4
-  droneFontSize: 30
-  patientFontSize: 26
-  siteFontSize: 26
+  droneLabelHeight: 2.4
+  patientLabelHeight: 2.8
+  siteLabelHeight: 3.6
+  droneFontSize: 20
+  patientFontSize: 18
+  siteFontSize: 17
+  restingScale: 0.78
+  restingAlpha: 0.66
+  siteScale: 0.85
+  siteAlpha: 0.7
 --- !u!1 &1472396368
 GameObject:
   m_ObjectHideFlags: 0
@@ -2783,9 +2787,9 @@ MonoBehaviour:
   showRoute: 1
   overridePaletteColor: 0
   customColor: {r: 0.2, g: 0.9, b: 1, a: 1}
-  lineWidth: 0.35
-  lineHeight: 0.6
-  flownBrightness: 0.34
+  lineWidth: 0.8
+  lineHeight: 1.2
+  flownFade: 0.55
   showGoalPip: 1
 --- !u!1 &2054729022
 GameObject:

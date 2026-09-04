@@ -16,7 +16,7 @@ namespace DroneRescue.Visualization
     /// It listens to RescueFeed and holds no reference to the planner, so nothing
     /// it does can reach the decision logic. Three deliberately separate registers:
     ///
-    ///   BANNER   large, brief, centre screen. The four Part 1 dynamic events only.
+    ///   BANNER   compact, brief, centre top. The four Part 1 dynamic events only.
     ///            Reserved for them so that a banner always means the world changed.
     ///   LOG      small, persistent, bottom left. Routine progress, glanceable.
     ///   LEGEND   small, persistent, bottom right. What the colours mean.
@@ -142,20 +142,23 @@ namespace DroneRescue.Visualization
             float alpha = Mathf.Min(age / 0.12f, Mathf.Clamp01((bannerSeconds - age) / 0.5f));
             alpha = Mathf.Clamp01(alpha);
 
-            float width = Mathf.Min(Screen.width * 0.78f, 980f * s);
-            float height = 74f * s;
-            var box = new Rect((Screen.width - width) * 0.5f, 26f * s, width, height);
+            // Sized to be caught out of the corner of the eye and then read, not to
+            // take the screen over. The colour bar and the kind line carry the
+            // noticing; the box only has to hold one sentence.
+            float width = Mathf.Min(Screen.width * 0.52f, 560f * s);
+            float height = 44f * s;
+            var box = new Rect((Screen.width - width) * 0.5f, 18f * s, width, height);
 
             var accent = KindColor(_current.kind);
 
             Fill(box, new Color(0.05f, 0.05f, 0.07f, 0.88f * alpha));
-            Fill(new Rect(box.x, box.y, 8f * s, box.height), new Color(accent.r, accent.g, accent.b, alpha));
+            Fill(new Rect(box.x, box.y, 5f * s, box.height), new Color(accent.r, accent.g, accent.b, alpha));
 
-            var kindRect = new Rect(box.x + 22f * s, box.y + 8f * s, box.width - 34f * s, 22f * s);
-            var textRect = new Rect(box.x + 22f * s, box.y + 30f * s, box.width - 34f * s, box.height - 36f * s);
+            var kindRect = new Rect(box.x + 14f * s, box.y + 5f * s, box.width - 22f * s, 13f * s);
+            var textRect = new Rect(box.x + 14f * s, box.y + 18f * s, box.width - 22f * s, box.height - 22f * s);
 
-            _bannerKindStyle.fontSize = Mathf.RoundToInt(17f * s);
-            _bannerStyle.fontSize = Mathf.RoundToInt(30f * s);
+            _bannerKindStyle.fontSize = Mathf.RoundToInt(10f * s);
+            _bannerStyle.fontSize = Mathf.RoundToInt(17f * s);
 
             var prev = GUI.color;
             GUI.color = new Color(accent.r, accent.g, accent.b, alpha);
@@ -167,10 +170,10 @@ namespace DroneRescue.Visualization
 
         private static string KindTitle(AlertKind kind)
         {
-            if (kind == AlertKind.FireSpread) return "DYNAMIC EVENT  ·  FIRE SPREAD";
-            if (kind == AlertKind.BatteryLow) return "DYNAMIC EVENT  ·  BATTERY LOW";
-            if (kind == AlertKind.DroneFailed) return "DYNAMIC EVENT  ·  DRONE FAILURE";
-            return "DYNAMIC EVENT  ·  NEW EMERGENCY";
+            if (kind == AlertKind.FireSpread) return "FIRE SPREAD";
+            if (kind == AlertKind.BatteryLow) return "BATTERY LOW";
+            if (kind == AlertKind.DroneFailed) return "DRONE FAILURE";
+            return "NEW EMERGENCY";
         }
 
         private static Color KindColor(AlertKind kind)

@@ -21,17 +21,26 @@ namespace DroneRescue.Visualization
         /// One hue per drone. Six entries because the scenario flies six drones;
         /// beyond that it wraps, and two drones would share a colour.
         ///
-        /// Chosen to stay apart from each other AND from the patient and pad
-        /// colours below, so a route crossing a casualty is still readable.
+        /// Every one of these is deliberately light. The ground material is a dark
+        /// grey-green, roughly 0.35 on each channel, and a route line is only a few
+        /// pixels wide at the camera height this scene is demonstrated from, so a
+        /// colour that merely differs in hue from the ground vanishes into it. What
+        /// separates a line from the ground at that size is brightness, not hue, so
+        /// each of these keeps at least one channel near full and none of them is
+        /// allowed to go dark.
+        ///
+        /// They are also spread around the wheel far enough to stay apart from each
+        /// other, and clear of the patient and pad colours below, so a route
+        /// crossing a casualty is still readable.
         /// </summary>
         private static readonly Color[] RouteColors =
         {
-            new Color(0.20f, 0.90f, 1.00f), // cyan
-            new Color(1.00f, 0.38f, 0.85f), // magenta
-            new Color(1.00f, 0.88f, 0.25f), // yellow
-            new Color(0.40f, 1.00f, 0.55f), // spring green
-            new Color(0.66f, 0.52f, 1.00f), // violet
-            new Color(1.00f, 0.58f, 0.36f), // coral
+            new Color(0.15f, 0.95f, 1.00f), // cyan
+            new Color(1.00f, 0.32f, 0.85f), // magenta
+            new Color(1.00f, 0.92f, 0.22f), // yellow
+            new Color(0.32f, 1.00f, 0.45f), // green
+            new Color(0.64f, 0.64f, 1.00f), // periwinkle
+            new Color(1.00f, 0.48f, 0.45f), // salmon
         };
 
         public static readonly Color Critical = new Color(0.86f, 0.14f, 0.14f);
@@ -87,10 +96,22 @@ namespace DroneRescue.Visualization
             return Stable;
         }
 
-        /// <summary>Same hue, knocked back. Used for the part of a route already flown.</summary>
-        public static Color Dimmed(Color color, float brightness, float alpha)
+        /// <summary>The scene's ground material, so a receding colour has something to recede INTO.</summary>
+        public static readonly Color Ground = new Color(0.34f, 0.37f, 0.33f);
+
+        /// <summary>
+        /// The same hue, pushed back toward the ground it is drawn on.
+        ///
+        /// Used for the part of a route already flown. Simply darkening the colour
+        /// was the obvious thing and it was wrong: a dark line on a mid-grey ground
+        /// has MORE contrast than a bright one, not less, so the flown trail came
+        /// out as a black smear that drew the eye and no longer read as belonging to
+        /// any particular drone. Blending toward the ground colour instead keeps the
+        /// hue legible and genuinely lowers the contrast.
+        /// </summary>
+        public static Color Receded(Color color, float towardGround)
         {
-            return new Color(color.r * brightness, color.g * brightness, color.b * brightness, alpha);
+            return Color.Lerp(color, Ground, Mathf.Clamp01(towardGround));
         }
 
         /// <summary>The colour as "RRGGBB", for TextMeshPro rich text tags.</summary>

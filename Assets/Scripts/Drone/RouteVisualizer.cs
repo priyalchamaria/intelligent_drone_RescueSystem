@@ -39,13 +39,14 @@ namespace DroneRescue.Fleet
 
         [SerializeField] private Color customColor = new Color(0.2f, 0.9f, 1f, 1f);
 
-        [SerializeField] private float lineWidth = 0.35f;
+        [Tooltip("Width of the part still to fly. Sized for the camera height this scene is demonstrated from.")]
+        [SerializeField] private float lineWidth = 0.8f;
 
-        [Tooltip("Height above the ground plane to draw the line at.")]
-        [SerializeField] private float lineHeight = 0.6f;
+        [Tooltip("Height above the ground plane to draw the line at. Must clear the hospital and charging pads.")]
+        [SerializeField] private float lineHeight = 1.2f;
 
-        [Tooltip("How dark the already-flown part of the route is drawn, as a fraction of the live colour.")]
-        [SerializeField, Range(0.05f, 1f)] private float flownBrightness = 0.34f;
+        [Tooltip("How far the already-flown part of the route is blended toward the ground colour. 0 keeps it live, 1 hides it.")]
+        [SerializeField, Range(0f, 1f)] private float flownFade = 0.55f;
 
         [Tooltip("Draw a short upright marker where the current leg ends.")]
         [SerializeField] private bool showGoalPip = true;
@@ -126,8 +127,8 @@ namespace DroneRescue.Fleet
             var goal = route[route.Count - 1];
             _pip.enabled = _ahead.enabled;
             _pip.positionCount = 2;
-            _pip.SetPosition(0, new Vector3(goal.x, 0.15f, goal.z));
-            _pip.SetPosition(1, new Vector3(goal.x, 3.4f, goal.z));
+            _pip.SetPosition(0, new Vector3(goal.x, 0.5f, goal.z));
+            _pip.SetPosition(1, new Vector3(goal.x, 4.0f, goal.z));
         }
 
         private Vector3 Flatten(Vector3 point) => new Vector3(point.x, lineHeight, point.z);
@@ -151,12 +152,13 @@ namespace DroneRescue.Fleet
             _ahead.widthCurve = new AnimationCurve(new Keyframe(0f, 1f), new Keyframe(1f, 0.45f));
             _ahead.widthMultiplier = lineWidth;
 
-            // Darkened rather than faded: the unlit material these lines use is
-            // opaque, so an alpha here would simply be ignored.
-            _flown = CreateLine("_RouteFlown", FleetPalette.Dimmed(_color, flownBrightness, 1f), lineWidth * 0.5f);
+            // Blended toward the ground rather than made transparent: the unlit
+            // material these lines use is opaque, so an alpha here would simply be
+            // ignored, and blending is what actually lowers the contrast.
+            _flown = CreateLine("_RouteFlown", FleetPalette.Receded(_color, flownFade), lineWidth * 0.45f);
 
             if (showGoalPip)
-                _pip = CreateLine("_RouteGoal", _color, lineWidth * 0.8f);
+                _pip = CreateLine("_RouteGoal", _color, lineWidth * 0.7f);
         }
 
         private LineRenderer CreateLine(string suffix, Color color, float width)
