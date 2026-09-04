@@ -64,6 +64,11 @@ namespace DroneRescue.Planning
         [Tooltip("Seconds to wait before retrying a patient the whole fleet was infeasible for.")]
         [SerializeField, Min(0.1f)] private float retryInterval = 2f;
 
+        [Header("Recharging")]
+        [Tooltip("Seconds a settled Charging drone takes to come back to Idle on a full battery. " +
+                 "Tunable here for the same reason the weights are: a run can be calibrated without a recompile.")]
+        [SerializeField, Min(0.1f)] private float rechargeSeconds = 12f;
+
         /// <summary>The Part 1 priority queue. Popped in Step 1.</summary>
         public PatientQueue Queue { get; } = new PatientQueue();
 
@@ -113,6 +118,9 @@ namespace DroneRescue.Planning
 
         private readonly List<DroneEvaluation> _evaluationBuffer = new List<DroneEvaluation>();
 
+        /// <summary>When each settled Charging drone's recharge clock started, keyed by drone id.</summary>
+        private readonly Dictionary<string, float> _chargingSince = new Dictionary<string, float>();
+
         private bool _runStarted;
         private bool _runReported;
         private float _nextDispatchAttemptTime;
@@ -153,6 +161,7 @@ namespace DroneRescue.Planning
 
             SyncQueueFromEnvironment();
             AdvanceMissions();
+            ServiceChargingDrones();
             DispatchWaitingPatients();
             ReportRunComplete();
         }
@@ -638,6 +647,68 @@ namespace DroneRescue.Planning
             Debug.Log("[Planner] " + drone.id + " released -> Idle.");
 
             RescueFeed.RaiseNote(drone.id + " idle, available for dispatch");
+        }
+
+        /// <summary>
+        /// Brings a drone that has finished charging back into the pool: battery to
+        /// full, status to Idle.
+        ///
+        /// A TIMER AND A STATE TRANSITION, AND NOTHING ELSE. Nothing here scores,
+        /// filters, routes or chooses; it changes two fields on one record when a
+        /// fixed duration has elapsed. Every decision about what that drone does next
+        /// is made afterwards by the ordinary Step 2 and Step 3 machinery, which sees
+        /// it as an Idle drone on a full battery and knows nothing about how it got
+        /// there.
+        ///
+        /// THE CLOCK STARTS WHEN THE DRONE SETTLES, not when it was told to charge. A
+        /// drone flying to a pad still has an open mission on the board, and charging
+        /// through the flight would let it top up in mid-air. A drone that could not
+        /// reach a pad has no open mission and charges where it parked, which is the
+        /// case that matters: before this, a drone that landed too flat to reach a pad
+        /// stayed Charging for the rest of the run with no way back to Idle, and the
+        /// fleet lost it permanently.
+        /// </summary>
+        private void ServiceChargingDrones()
+        {
+            var list = environment.DroneList;
+
+            for (int i = 0; i < list.Count; i++)
+            {
+                var drone = list[i];
+
+                // Not charging, or still on its way to a pad: no clock running.
+                if (drone.status != DroneStatus.Charging || ActiveMissionOf(drone.id) != null)
+                {
+                    _chargingSince.Remove(drone.id);
+                    continue;
+                }
+
+                float since;
+                if (!_chargingSince.TryGetValue(drone.id, out since))
+                {
+                    _chargingSince[drone.id] = Time.time;
+                    continue;
+                }
+
+                if (Time.time - since < rechargeSeconds)
+                    continue;
+
+                _chargingSince.Remove(drone.id);
+
+                drone.batteryPercent = 100f;
+                drone.status = DroneStatus.Idle;
+
+                // Clears the infeasibility backoff. A patient held at the head of the
+                // queue because nothing could reach it should be retried against the
+                // fleet that now includes this drone, rather than waiting out a timer
+                // set before it existed. Same line, and the same reason, as Reassign.
+                _nextDispatchAttemptTime = 0f;
+
+                Debug.Log("[Planner] " + drone.id + " finished charging after "
+                          + rechargeSeconds.ToString("F0") + "s -> Idle at 100%.");
+
+                RescueFeed.RaiseNote(drone.id + " recharged to 100%, back in the dispatch pool");
+            }
         }
 
         /// <summary>

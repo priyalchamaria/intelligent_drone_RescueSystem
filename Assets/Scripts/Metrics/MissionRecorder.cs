@@ -61,6 +61,14 @@ namespace DroneRescue.Metrics
         private readonly List<string> _feed = new List<string>();
         private readonly Dictionary<string, float> _startBattery = new Dictionary<string, float>();
 
+        /// <summary>Last charge seen per drone, so a recharge can be spotted as it happens.</summary>
+        private readonly Dictionary<string, float> _lastBattery = new Dictionary<string, float>();
+
+        /// <summary>Charge put back into each drone across the run.</summary>
+        private readonly Dictionary<string, float> _rechargedBattery = new Dictionary<string, float>();
+
+        private int _rechargeEvents;
+
         private MissionLogWriter _writer;
         private Stopwatch _stopwatch;
         private string _runId = "";
@@ -105,6 +113,11 @@ namespace DroneRescue.Metrics
             if (!_started)
                 return;
 
+            // Sampled every frame, because a recharge is a jump upward that leaves no
+            // trace in the drone record afterwards. Miss it and the run looks like it
+            // spent less charge than it did.
+            SampleBatteries();
+
             // A NewEmergency raised after the last mission finished reopens the run:
             // the planner clears its reported flag and starts dispatching again. The
             // work done after that point is part of the mission and has to be
@@ -143,8 +156,16 @@ namespace DroneRescue.Metrics
             // Starting charge has to be captured now. Nothing stores it, and by the
             // end of the run the only battery figures left are the spent ones.
             _startBattery.Clear();
+            _lastBattery.Clear();
+            _rechargedBattery.Clear();
+            _rechargeEvents = 0;
+
             foreach (var drone in environment.DroneList)
+            {
                 _startBattery[drone.id] = drone.batteryPercent;
+                _lastBattery[drone.id] = drone.batteryPercent;
+                _rechargedBattery[drone.id] = 0f;
+            }
 
             Record("run started  ·  " + environment.DroneList.Count + " drones, "
                    + environment.Patients.Count + " casualties detected  ·  mode " + dispatchMode);
@@ -167,6 +188,14 @@ namespace DroneRescue.Metrics
                 LastRun.runId = _runId + "-" + (_completions + 1);
 
             Debug.Log("[Metrics] MISSION METRICS\n" + LastRun.ToReadableBlock());
+
+            // The battery figures check themselves. They are the one group here that
+            // is not a single reading, and the last time they disagreed there was
+            // nothing in the output to say so.
+            if (Mathf.Abs(LastRun.BatteryResidual) > 0.5f)
+                Debug.LogWarning("[Metrics] Battery figures do not balance: start + recharged - spent - remaining = "
+                                 + LastRun.BatteryResidual.ToString("F2", CultureInfo.InvariantCulture)
+                                 + ", expected 0.");
 
             if (writeEventFeed && _writer != null)
             {
@@ -253,8 +282,22 @@ namespace DroneRescue.Metrics
             metrics.coveragePercent = Percent(reached, metrics.patientCount);
 
             // 4. Battery at mission end.
+            //
+            // Four figures rather than two, because two do not reconcile on their
+            // own. The fleet does not start on a full charge: the scenario authors a
+            // different starting percentage per drone, so "23% left" and "64% spent"
+            // sum to the fleet's actual starting average and not to 100. Recording
+            // that starting average is what makes the pair readable.
+            //
+            // Spend is derived rather than differenced, for the same reason: with
+            // recharging in play, start minus remaining is not what a drone burned.
+            // A drone that started at 100, ran down to 3, recharged and finished on
+            // 88 spent 109 points, not 12.
+            SampleBatteries();
+
+            float startTotal = 0f;
             float remainingTotal = 0f;
-            float usedTotal = 0f;
+            float rechargedTotal = 0f;
             float lowest = float.PositiveInfinity;
 
             foreach (var drone in environment.DroneList)
@@ -263,15 +306,21 @@ namespace DroneRescue.Metrics
                 lowest = Mathf.Min(lowest, drone.batteryPercent);
 
                 float start;
-                usedTotal += _startBattery.TryGetValue(drone.id, out start)
-                    ? Mathf.Max(0f, start - drone.batteryPercent)
-                    : 0f;
+                startTotal += _startBattery.TryGetValue(drone.id, out start) ? start : drone.batteryPercent;
+
+                float recharged;
+                rechargedTotal += _rechargedBattery.TryGetValue(drone.id, out recharged) ? recharged : 0f;
             }
+
+            metrics.rechargeCount = _rechargeEvents;
 
             if (metrics.droneCount > 0)
             {
+                metrics.fleetAvgBatteryStartPercent = startTotal / metrics.droneCount;
                 metrics.fleetAvgBatteryRemainingPercent = remainingTotal / metrics.droneCount;
-                metrics.fleetAvgBatteryUsedPercent = usedTotal / metrics.droneCount;
+                metrics.fleetAvgBatteryRechargedPercent = rechargedTotal / metrics.droneCount;
+                metrics.fleetAvgBatteryUsedPercent =
+                    (startTotal + rechargedTotal - remainingTotal) / metrics.droneCount;
                 metrics.minBatteryRemainingPercent = lowest;
             }
 
@@ -293,6 +342,40 @@ namespace DroneRescue.Metrics
                 : 0f;
 
             return metrics;
+        }
+
+        /// <summary>
+        /// Notes any charge that has appeared in a drone since the last look.
+        ///
+        /// Battery only ever falls while flying, so a rise can only be a recharge.
+        /// The threshold keeps floating-point noise out of the total; a real recharge
+        /// arrives as a jump of tens of points.
+        /// </summary>
+        private void SampleBatteries()
+        {
+            foreach (var drone in environment.DroneList)
+            {
+                float previous;
+                if (!_lastBattery.TryGetValue(drone.id, out previous))
+                {
+                    // A drone that appeared after the run began. Counted from here.
+                    _startBattery[drone.id] = drone.batteryPercent;
+                    _lastBattery[drone.id] = drone.batteryPercent;
+                    _rechargedBattery[drone.id] = 0f;
+                    continue;
+                }
+
+                float gained = drone.batteryPercent - previous;
+                if (gained > 0.5f)
+                {
+                    float already;
+                    _rechargedBattery.TryGetValue(drone.id, out already);
+                    _rechargedBattery[drone.id] = already + gained;
+                    _rechargeEvents++;
+                }
+
+                _lastBattery[drone.id] = drone.batteryPercent;
+            }
         }
 
         private bool WritePatientDetail()

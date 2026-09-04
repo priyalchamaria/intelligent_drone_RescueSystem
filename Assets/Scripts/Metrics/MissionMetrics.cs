@@ -62,11 +62,43 @@ namespace DroneRescue.Metrics
         public float rescueSuccessRatePercent;
 
         // 4. Battery at mission end --------------------------------------
+
+        /// <summary>
+        /// Mean charge the fleet STARTED the run on.
+        ///
+        /// Recorded because it is not 100. The scenario authors a different starting
+        /// charge per drone, so without this figure the remaining and spent averages
+        /// below look like they contradict each other: they sum to this number, not
+        /// to a hundred. It is context for the other three, not a ninth metric.
+        /// </summary>
+        public float fleetAvgBatteryStartPercent;
+
         public float fleetAvgBatteryRemainingPercent;
         public float minBatteryRemainingPercent;
 
-        /// <summary>Mean charge spent across the fleet. The complement of the average above.</summary>
+        /// <summary>
+        /// Mean charge actually spent flying, across the fleet.
+        ///
+        /// Measured as start plus anything put back by recharging, less what is left,
+        /// so a drone that ran itself down and then recharged is credited with the
+        /// whole of what it burned rather than only the part still missing at the end.
+        /// </summary>
         public float fleetAvgBatteryUsedPercent;
+
+        /// <summary>Mean charge returned to the fleet by recharging. Zero on a run where nothing recharged.</summary>
+        public float fleetAvgBatteryRechargedPercent;
+
+        /// <summary>How many times a drone completed a recharge and rejoined the pool.</summary>
+        public int rechargeCount;
+
+        /// <summary>
+        /// The battery figures as one identity: start + recharged - used = remaining.
+        /// Holds to within rounding on every run, and is the line to check first if
+        /// the battery numbers ever look wrong again.
+        /// </summary>
+        public float BatteryResidual =>
+            fleetAvgBatteryStartPercent + fleetAvgBatteryRechargedPercent
+            - fleetAvgBatteryUsedPercent - fleetAvgBatteryRemainingPercent;
 
         // 5. Collisions ---------------------------------------------------
         public int collisionCount;
@@ -99,7 +131,8 @@ namespace DroneRescue.Metrics
                 "MissionTimeMs", "MissionTimeSeconds",
                 "AvgResponseSeconds", "ResponseSamples", "WorstResponseSeconds",
                 "Delivered", "RescueSuccessRatePercent",
-                "FleetAvgBatteryRemainingPercent", "MinBatteryRemainingPercent", "FleetAvgBatteryUsedPercent",
+                "FleetAvgBatteryStartPercent", "FleetAvgBatteryRemainingPercent", "MinBatteryRemainingPercent",
+                "FleetAvgBatteryUsedPercent", "FleetAvgBatteryRechargedPercent", "Recharges",
                 "Collisions", "MinSeparationUnits",
                 "Reassignments",
                 "Reached", "CoveragePercent",
@@ -126,8 +159,10 @@ namespace DroneRescue.Metrics
                 missionTimeMs.ToString("F0", c), missionTimeSeconds.ToString("F2", c),
                 averageResponseSeconds.ToString("F2", c), responseSamples.ToString(c), worstResponseSeconds.ToString("F2", c),
                 deliveredCount.ToString(c), rescueSuccessRatePercent.ToString("F1", c),
+                fleetAvgBatteryStartPercent.ToString("F1", c),
                 fleetAvgBatteryRemainingPercent.ToString("F1", c), minBatteryRemainingPercent.ToString("F1", c),
-                fleetAvgBatteryUsedPercent.ToString("F1", c),
+                fleetAvgBatteryUsedPercent.ToString("F1", c), fleetAvgBatteryRechargedPercent.ToString("F1", c),
+                rechargeCount.ToString(c),
                 collisionCount.ToString(c), FormatSeparation(minSeparation),
                 reassignmentCount.ToString(c),
                 reachedCount.ToString(c), coveragePercent.ToString("F1", c),
@@ -157,9 +192,14 @@ namespace DroneRescue.Metrics
               .Append(rescueSuccessRatePercent.ToString("F0", c)).Append("%  (")
               .Append(deliveredCount).Append(" of ").Append(patientCount).AppendLine(" delivered)");
             sb.Append("  4. battery at mission end      fleet average ")
-              .Append(fleetAvgBatteryRemainingPercent.ToString("F0", c)).Append("% remaining, lowest ")
-              .Append(minBatteryRemainingPercent.ToString("F0", c)).Append("%, average ")
-              .Append(fleetAvgBatteryUsedPercent.ToString("F0", c)).AppendLine("% spent");
+              .Append(fleetAvgBatteryRemainingPercent.ToString("F1", c)).Append("% remaining, lowest ")
+              .Append(minBatteryRemainingPercent.ToString("F1", c)).AppendLine("%");
+            sb.Append("     battery accounting          started ")
+              .Append(fleetAvgBatteryStartPercent.ToString("F1", c)).Append("%  + recharged ")
+              .Append(fleetAvgBatteryRechargedPercent.ToString("F1", c)).Append("%  - spent ")
+              .Append(fleetAvgBatteryUsedPercent.ToString("F1", c)).Append("%  = remaining ")
+              .Append(fleetAvgBatteryRemainingPercent.ToString("F1", c)).Append("%   (")
+              .Append(rechargeCount).AppendLine(" recharges)");
             sb.Append("  5. collisions                  ").Append(collisionCount)
               .Append("  (closest approach ").Append(FormatSeparation(minSeparation)).AppendLine(" units)");
             sb.Append("  6. reassignments               ").Append(reassignmentCount)

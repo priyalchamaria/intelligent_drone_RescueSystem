@@ -174,6 +174,8 @@ namespace DroneRescue.Metrics
 
             try
             {
+                RetireMismatchedSummary();
+
                 bool isNewFile = !File.Exists(SummaryPath) || new FileInfo(SummaryPath).Length == 0;
 
                 using (var writer = new StreamWriter(SummaryPath, true, Utf8NoBom))
@@ -190,6 +192,43 @@ namespace DroneRescue.Metrics
             {
                 Debug.LogError("[Metrics] Error writing " + SummaryPath + ": " + ex.Message);
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Moves an existing summary file aside when its header no longer matches the
+        /// columns being written.
+        ///
+        /// Appending a wider row under a narrower header does not fail; it produces a
+        /// file where a column heading and the values under it are different
+        /// quantities, and nothing complains until somebody reads a battery figure as
+        /// a collision count. Renaming the old file keeps both sets of runs and lets
+        /// the new one start from a header that describes it.
+        /// </summary>
+        private void RetireMismatchedSummary()
+        {
+            try
+            {
+                if (!File.Exists(SummaryPath) || new FileInfo(SummaryPath).Length == 0)
+                    return;
+
+                string existingHeader;
+                using (var reader = new StreamReader(SummaryPath, Utf8NoBom))
+                    existingHeader = reader.ReadLine();
+
+                if (existingHeader == MissionMetrics.CsvHeader())
+                    return;
+
+                string retired = Path.Combine(_directory,
+                    Path.GetFileNameWithoutExtension(SummaryFileName)
+                    + "_before_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".csv");
+
+                File.Move(SummaryPath, retired);
+                Debug.Log("[Metrics] Summary columns changed. Earlier runs kept as " + retired);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[Metrics] Could not retire the old summary file: " + ex.Message);
             }
         }
 
