@@ -91,6 +91,24 @@ namespace DroneRescue.Planning
         /// <summary>Patient the most recent decision was about, or null before the first dispatch.</summary>
         public Patient LastDecisionPatient { get; private set; }
 
+        /// <summary>Simulated time of that decision.</summary>
+        public float LastDecisionTime { get; private set; }
+
+        /// <summary>
+        /// Every drone measured for the most recent dispatch, rejected ones included.
+        ///
+        /// The winner alone explains which drone went; the whole table explains why
+        /// the others did not, which is the half a reader actually argues with. Phase
+        /// 8's explainability panel shows all of it.
+        /// </summary>
+        public IReadOnlyList<DroneEvaluation> LastEvaluations => _lastEvaluations;
+
+        /// <summary>The Step 3 weights, so a score shown elsewhere can be shown with the weights that made it.</summary>
+        public float W1Distance => w1Distance;
+
+        public float W2BatteryUtilization => w2BatteryUtilization;
+        public float W3Risk => w3Risk;
+
         /// <summary>Dispatches issued this run, reassignments included. Phase 7 metric input.</summary>
         public int DispatchCount { get; private set; }
 
@@ -117,6 +135,7 @@ namespace DroneRescue.Planning
         private readonly HashSet<Patient> _queued = new HashSet<Patient>();
 
         private readonly List<DroneEvaluation> _evaluationBuffer = new List<DroneEvaluation>();
+        private readonly List<DroneEvaluation> _lastEvaluations = new List<DroneEvaluation>();
 
         /// <summary>When each settled Charging drone's recharge clock started, keyed by drone id.</summary>
         private readonly Dictionary<string, float> _chargingSince = new Dictionary<string, float>();
@@ -423,6 +442,14 @@ namespace DroneRescue.Planning
             best = scored[winnerIndex];
             LastDecision = best;
             LastDecisionPatient = patient;
+            LastDecisionTime = Time.time;
+
+            // Kept only for a decision that produced a dispatch. A failed attempt
+            // leaves the last real one on show rather than replacing it with a table
+            // of six rejections that explains nothing.
+            _lastEvaluations.Clear();
+            _lastEvaluations.AddRange(scored);
+
             return true;
         }
 

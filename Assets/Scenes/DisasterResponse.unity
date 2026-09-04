@@ -1716,6 +1716,7 @@ GameObject:
   - component: {fileID: 1208180823}
   - component: {fileID: 1208180822}
   - component: {fileID: 1208180824}
+  - component: {fileID: 1208180825}
   m_Layer: 0
   m_Name: MissionSystem
   m_TagString: Untagged
@@ -1844,6 +1845,7 @@ MonoBehaviour:
   lowBatteryPercent: 25
   flyToChargerWhenLow: 1
   retryInterval: 2
+  rechargeSeconds: 12
 --- !u!114 &1208180819
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2008,6 +2010,26 @@ MonoBehaviour:
   writeEventFeed: 1
   writePatientCsv: 1
   dispatchMode: Scored
+--- !u!114 &1208180825
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1208180812}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 747c36c1e8a1b9f43b57ca9966a8a6c4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneRescue.Dashboard.DashboardStateWriter
+  environment: {fileID: 1208180813}
+  planner: {fileID: 1208180818}
+  simulator: {fileID: 1208180816}
+  recorder: {fileID: 1208180824}
+  outputDirectory: 
+  publishInterval: 0.3
+  feedLength: 40
+  publish: 1
 --- !u!1 &1472396368
 GameObject:
   m_ObjectHideFlags: 0

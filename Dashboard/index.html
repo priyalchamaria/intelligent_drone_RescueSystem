@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mission Dashboard &middot; Multi-Drone Disaster Response</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+    <div>
+        <h1>Mission Dashboard</h1>
+        <div class="sub" id="scenario">waiting for a run</div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="stat"><b id="clock">0.0s</b><span>sim clock</span></div>
+    <div class="stat"><b id="statDispatch">0</b><span>dispatches</span></div>
+    <div class="stat"><b id="statReassign">0</b><span>reassignments</span></div>
+    <div class="stat"><b id="statDelivered">0 / 0</b><span>delivered</span></div>
+
+    <div class="pill off" id="link"><i class="dot"></i><span id="linkText">no data yet</span></div>
+</header>
+
+<nav>
+    <button class="on" data-view="live">Live</button>
+    <button data-view="analytics">Analytics</button>
+</nav>
+
+<main>
+
+<!-- ------------------------------------------------------------ live -->
+<section class="view on" id="view-live">
+    <div class="grid">
+
+        <div class="stack">
+            <div class="card">
+                <h2>Situation map <em id="mapNote">100 &times; 100 world units</em></h2>
+                <canvas id="map" width="760" height="760"></canvas>
+                <div class="legend">
+                    <span><i style="background:#db2424"></i>Critical</span>
+                    <span><i style="background:#f2a31a"></i>Serious</span>
+                    <span><i style="background:#3dbd52"></i>Stable</span>
+                    <span><i style="background:#9ea89e"></i>Delivered</span>
+                    <span><i class="sq" style="background:#ebf2ff"></i>Hospital</span>
+                    <span><i class="sq" style="background:#21b88c"></i>Charging pad</span>
+                    <span><i class="sq" style="background:#e6541a"></i>Fire</span>
+                    <span><i class="sq" style="background:#4a5060"></i>Rubble</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Assignment explainability <em id="explainNote">no dispatch yet</em></h2>
+                <div class="formula" id="explainFormula"></div>
+                <div id="explainBody"><div class="empty">Nothing has been dispatched yet.</div></div>
+            </div>
+        </div>
+
+        <div class="stack">
+            <div class="card">
+                <h2>Fleet status <em id="fleetNote"></em></h2>
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Drone</th>
+                        <th>Status</th>
+                        <th class="num">Battery</th>
+                        <th class="num">Range</th>
+                        <th>Task</th>
+                    </tr>
+                    </thead>
+                    <tbody id="fleet"></tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>Priority queue <em id="queueNote">empty</em></h2>
+                <table>
+                    <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Casualty</th>
+                        <th>Priority</th>
+                        <th class="num">Waiting</th>
+                    </tr>
+                    </thead>
+                    <tbody id="queue"></tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>Alerts &amp; progress</h2>
+                <div id="feed"><div class="empty">No events yet.</div></div>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+<!-- ------------------------------------------------------- analytics -->
+<section class="view" id="view-analytics">
+    <div class="card" style="margin-bottom:14px">
+        <h2>Run summary <em id="runNote">no completed run yet</em></h2>
+        <div class="metrics" id="metrics"></div>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h2>Response time per casualty <em>queue entry to drone arrival</em></h2>
+            <div id="responses"><div class="empty">No completed run yet.</div></div>
+        </div>
+
+        <div class="card">
+            <h2>Battery accounting <em>fleet averages, percentage points</em></h2>
+            <div id="battery"><div class="empty">No completed run yet.</div></div>
+        </div>
+    </div>
+</section>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

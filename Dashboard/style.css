@@ -1,0 +1,301 @@
+/*
+   Mission dashboard styling.
+
+   Dark, because it is read next to a Unity Game view that is also dark and a
+   white page beside it is the only thing anybody looks at. The palette below is
+   the same one the simulation draws with: route colours per drone, triage
+   colours per casualty. Two views of one run should not need a translation key.
+*/
+
+:root {
+    --bg: #12141a;
+    --panel: #191c24;
+    --panel-2: #1f232d;
+    --line: #2b3040;
+    --ink: #e6e9f0;
+    --ink-dim: #8f97a8;
+    --ink-faint: #626b7d;
+
+    --critical: #db2424;
+    --serious: #f2a31a;
+    --stable: #3dbd52;
+    --hospital: #ebf2ff;
+    --charging: #21b88c;
+    --fire: #e6541a;
+    --rescued: #9ea89e;
+
+    --ok: #3dbd52;
+    --warn: #f2a31a;
+    --bad: #db2424;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 13px/1.45 "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+/* ---------------------------------------------------------------- header */
+
+header {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 12px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+h1 {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: 0.2px;
+}
+
+.sub { color: var(--ink-faint); font-size: 12px; }
+
+.spacer { flex: 1; }
+
+.stat { display: flex; flex-direction: column; line-height: 1.2; }
+.stat b { font-size: 15px; font-variant-numeric: tabular-nums; font-weight: 600; }
+.stat span { font-size: 10px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.7px; }
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 11px;
+    border-radius: 20px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    font-size: 11px;
+    color: var(--ink-dim);
+}
+
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-faint); }
+.pill.live .dot { background: var(--ok); box-shadow: 0 0 7px var(--ok); }
+.pill.done .dot { background: var(--warn); }
+.pill.off .dot { background: var(--bad); }
+
+/* ------------------------------------------------------------------ tabs */
+
+nav { display: flex; gap: 4px; padding: 10px 20px 0; }
+
+nav button {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--ink-faint);
+    padding: 7px 14px;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+nav button:hover { color: var(--ink-dim); }
+nav button.on { color: var(--ink); border-bottom-color: var(--charging); }
+
+/* ---------------------------------------------------------------- layout */
+
+main { padding: 14px 20px 32px; }
+.view { display: none; }
+.view.on { display: block; }
+
+.grid {
+    display: grid;
+    grid-template-columns: minmax(340px, 1.15fr) minmax(360px, 1fr);
+    gap: 14px;
+    align-items: start;
+}
+
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+.stack { display: flex; flex-direction: column; gap: 14px; }
+
+.card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.card > h2 {
+    margin: 0;
+    padding: 9px 13px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+}
+
+.card > h2 em {
+    font-style: normal;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--ink-faint);
+    font-size: 11px;
+}
+
+.body { padding: 11px 13px; }
+
+/* ------------------------------------------------------------------- map */
+
+/* Sized to fit beside the panels without scrolling. The canvas renders at a
+   fixed 760px and is scaled down here, so the drawing code never has to know
+   how big the window is. */
+#map { display: block; width: 100%; max-width: 560px; height: auto; margin: 0 auto; background: #0d0f14; }
+
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px 14px;
+    padding: 9px 13px;
+    border-top: 1px solid var(--line);
+    font-size: 11px;
+    color: var(--ink-faint);
+}
+
+.legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+.legend i.sq { border-radius: 2px; }
+
+/* ---------------------------------------------------------------- tables */
+
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+
+th {
+    text-align: left;
+    font-size: 10px;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 600;
+    padding: 7px 13px;
+    border-bottom: 1px solid var(--line);
+}
+
+td { padding: 6px 13px; border-bottom: 1px solid rgba(43, 48, 64, 0.5); }
+tr:last-child td { border-bottom: none; }
+td.num, th.num { text-align: right; }
+
+tr.win td { background: rgba(33, 184, 140, 0.09); }
+tr.out td { color: var(--ink-faint); }
+
+.chip {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 3px;
+    font-size: 10px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    font-weight: 600;
+    background: var(--panel-2);
+    color: var(--ink-dim);
+}
+
+.chip.busy { background: rgba(38, 242, 255, 0.14); color: #7defff; }
+.chip.idle { background: rgba(158, 168, 158, 0.14); color: var(--rescued); }
+.chip.charging { background: rgba(33, 184, 140, 0.16); color: var(--charging); }
+.chip.offline { background: rgba(219, 36, 36, 0.16); color: #ff7b7b; }
+
+.chip.critical { background: rgba(219, 36, 36, 0.16); color: #ff8080; }
+.chip.serious { background: rgba(242, 163, 26, 0.16); color: #ffc668; }
+.chip.stable { background: rgba(61, 189, 82, 0.15); color: #79dd8b; }
+
+.who { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; }
+.swatch { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+
+/* battery bar sits behind the number rather than beside it, so the column
+   stays narrow and the fleet reads as one shape at a glance */
+.batt { position: relative; min-width: 74px; }
+.batt .fill { position: absolute; inset: 0; border-radius: 3px; opacity: 0.22; }
+.batt span { position: relative; padding-left: 5px; }
+
+/* ------------------------------------------------------------------ feed */
+
+#feed { max-height: 300px; overflow-y: auto; padding: 4px 0; }
+
+.line {
+    display: flex;
+    gap: 9px;
+    padding: 4px 13px;
+    border-left: 2px solid transparent;
+    font-size: 12px;
+}
+
+.line .t { color: var(--ink-faint); font-variant-numeric: tabular-nums; min-width: 44px; text-align: right; }
+.line .m { color: var(--ink-dim); }
+.line.alert { border-left-color: var(--warn); background: rgba(242, 163, 26, 0.05); }
+.line.alert .m { color: var(--ink); }
+.line.alert .k {
+    font-size: 9px;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+    color: var(--warn);
+    font-weight: 700;
+    align-self: center;
+}
+
+.line.FireSpread { border-left-color: var(--fire); }
+.line.FireSpread .k { color: var(--fire); }
+.line.DroneFailed { border-left-color: var(--bad); }
+.line.DroneFailed .k { color: #ff7b7b; }
+.line.NewEmergency { border-left-color: var(--critical); }
+.line.NewEmergency .k { color: #ff8080; }
+.line.BatteryLow { border-left-color: var(--charging); }
+.line.BatteryLow .k { color: var(--charging); }
+
+/* --------------------------------------------------------- explainability */
+
+.formula {
+    padding: 9px 13px;
+    background: var(--panel-2);
+    border-bottom: 1px solid var(--line);
+    font-size: 11px;
+    color: var(--ink-faint);
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+.formula b { color: var(--ink-dim); font-weight: 600; }
+
+.bar { display: flex; height: 7px; border-radius: 3px; overflow: hidden; background: var(--panel-2); min-width: 78px; }
+.bar i { display: block; height: 100%; }
+.bar i.d { background: #4c7dff; }
+.bar i.b { background: var(--charging); }
+.bar i.r { background: var(--fire); }
+
+/* ------------------------------------------------------------- analytics */
+
+.metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+    gap: 1px;
+    background: var(--line);
+}
+
+.metric { background: var(--panel); padding: 13px; }
+.metric b { display: block; font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.metric span { font-size: 10px; text-transform: uppercase; letter-spacing: 0.7px; color: var(--ink-faint); }
+.metric em { font-style: normal; font-size: 11px; color: var(--ink-faint); display: block; margin-top: 3px; }
+
+.empty { padding: 34px 13px; text-align: center; color: var(--ink-faint); font-size: 12px; }
+
+.rowbar { display: flex; align-items: center; gap: 9px; }
+.rowbar .track { flex: 1; height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden; }
+.rowbar .track i { display: block; height: 100%; }
+
+/* Identifiers must not wrap: "P-01" broken across two lines reads as two
+   different casualties at a glance. */
+.nowrap { white-space: nowrap; }
