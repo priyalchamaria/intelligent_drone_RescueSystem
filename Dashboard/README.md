@@ -54,6 +54,23 @@ needs nothing installed.
 **Analytics** appears when a run finishes: the eight metrics, response time per
 casualty, and the battery identity `start + recharged − spent = remaining`.
 
+## Dispatch modes
+
+The `MissionPlanner` component carries a `Dispatch Mode` toggle, read on every
+dispatch and set before pressing play.
+
+| Mode | Rule |
+| --- | --- |
+| `Scored` | Part 1 Step 3. Lowest `W1 x distance + W2 x batteryUtilisation + W3 x risk` wins. |
+| `NearestIdle` | The Phase 9 baseline. Closest idle drone, nothing else considered. |
+
+Both modes see the same Part 1 Step 2 hard filter, so a comparison run measures
+the selection rule and nothing else. The three score factors are computed in both
+modes, so a baseline run still records what the planner would have chosen: the
+explainability panel marks that drone and says so, and the header names the mode
+in force. The summary CSV records it per run, taken from the planner rather than
+typed anywhere, so the two cannot disagree.
+
 ## What it does not do
 
 It does not talk back. There is no control here, no way to dispatch a drone or

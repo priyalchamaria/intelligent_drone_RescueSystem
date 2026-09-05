@@ -79,7 +79,9 @@ function render(s) {
     link.className = 'pill ' + (complete ? 'done' : 'live');
     $('linkText').textContent = complete ? 'run complete' : (s.runStarted ? 'live' : 'standing by');
 
-    $('scenario').textContent = s.scenario + '  ·  updated ' + s.generatedAt;
+    $('scenario').textContent = s.scenario
+        + (s.dispatchMode ? '  ·  ' + modeName(s.dispatchMode) + ' dispatch' : '')
+        + '  ·  updated ' + s.generatedAt;
     // The mission's clock, not the session's: it stops when the run does, and
     // matches the completion time the analytics tab reports.
     $('clock').textContent = num(s.missionSeconds !== undefined ? s.missionSeconds : s.simTime) + 's';
@@ -95,6 +97,11 @@ function render(s) {
     renderFeed(s);
     renderExplain(s);
     renderAnalytics(s);
+}
+
+/* The baseline mode's name is one word in the data and two in English. */
+function modeName(mode) {
+    return mode === 'NearestIdle' ? 'nearest-idle baseline' : 'scored';
 }
 
 /* ---------------------------------------------------------------------- map */
@@ -338,13 +345,34 @@ function renderExplain(s) {
         return;
     }
 
-    $('explainNote').textContent = x.patient + ' at ' + num(x.at) + 's  ·  won by ' + x.winner;
-    $('explainFormula').innerHTML =
-        'score = <b>' + x.w1 + '</b> × totalDistance + <b>' + x.w2 + '</b> × batteryUtilisation + <b>'
-        + x.w3 + '</b> × riskFactor &nbsp;&nbsp;·&nbsp;&nbsp; lowest wins';
+    // In baseline mode the scores are still computed and shown, but they did not
+    // choose. Saying so is not optional: without it the panel looks broken every
+    // time the nearest drone is not the lowest-scoring one, which is the whole
+    // point of running the comparison.
+    const baseline = x.rule === 'NearestIdle';
+
+    $('explainNote').textContent = x.patient + ' at ' + num(x.at) + 's  ·  won by ' + x.winner
+        + (baseline ? '  ·  nearest idle' : '');
+
+    $('explainFormula').innerHTML = baseline
+        ? '<b>baseline: nearest idle drone wins.</b> Scores are shown for comparison and did '
+          + 'not choose. score = <b>' + x.w1 + '</b> × totalDistance + <b>' + x.w2
+          + '</b> × batteryUtilisation + <b>' + x.w3 + '</b> × riskFactor'
+        : 'score = <b>' + x.w1 + '</b> × totalDistance + <b>' + x.w2
+          + '</b> × batteryUtilisation + <b>' + x.w3 + '</b> × riskFactor'
+          + '&nbsp;&nbsp;·&nbsp;&nbsp; lowest wins';
 
     const scored = x.rows.filter(r => r.scored);
     const worst = Math.max(1, ...scored.map(r => r.score));
+
+    // The row the scored planner would have taken. Shown only in baseline mode, and
+    // only when it disagrees, which is precisely the evidence a comparison run is
+    // gathering.
+    let wouldHave = null;
+    if (baseline && scored.length) {
+        const best = scored.reduce((a, b) => (b.score < a.score ? b : a));
+        if (!best.winner) wouldHave = best.id;
+    }
 
     const rows = x.rows.map(r => {
         if (!r.scored) {
@@ -359,9 +387,9 @@ function renderExplain(s) {
         const b = (r.battTerm / worst) * 100;
         const k = (r.riskTerm / worst) * 100;
 
-        return '<tr class="' + (r.winner ? 'win' : '') + '">'
+        return '<tr class="' + (r.winner ? 'win' : (r.id === wouldHave ? 'alt' : '')) + '">'
             + '<td><span class="who"><i class="swatch" style="background:' + droneColor(r.id) + '"></i>'
-            + esc(r.id) + (r.winner ? ' ✓' : '') + '</span></td>'
+            + esc(r.id) + (r.winner ? ' ✓' : (r.id === wouldHave ? ' ◦' : '')) + '</span></td>'
             + '<td class="num">' + num(r.total, 0) + 'u</td>'
             + '<td class="num">' + num(r.battUtil, 2) + '</td>'
             + '<td class="num">' + num(r.risk, 2) + '</td>'
@@ -373,10 +401,15 @@ function renderExplain(s) {
             + '</tr>';
     }).join('');
 
+    const footnote = wouldHave
+        ? '<div class="formula" style="border-top:1px solid var(--line);border-bottom:none">'
+          + '◦ the scored planner would have sent <b>' + esc(wouldHave) + '</b> instead</div>'
+        : '';
+
     body.innerHTML = '<table><thead><tr>'
         + '<th>Drone</th><th class="num">Total dist</th><th class="num">Batt util</th>'
         + '<th class="num">Risk</th><th>Contribution</th><th class="num">Score</th>'
-        + '</tr></thead><tbody>' + rows + '</tbody></table>';
+        + '</tr></thead><tbody>' + rows + '</tbody></table>' + footnote;
 }
 
 function verdict(r) {

@@ -165,6 +165,8 @@ namespace DroneRescue.Dashboard
             Comma();
             Field("scenario", environment.Config != null ? environment.Config.name : "unknown");
             Comma();
+            Field("dispatchMode", planner.ModeName);
+            Comma();
             Field("maxRange", planner.MaxRange);
             Comma();
             Field("dispatches", planner.DispatchCount);
@@ -429,6 +431,8 @@ namespace DroneRescue.Dashboard
             Field("at", planner.LastDecisionTime);
             Comma();
             Field("winner", winner.drone != null ? winner.drone.id : null);
+            Comma();
+            Field("rule", planner.ModeName);
             Comma();
             Field("w1", planner.W1Distance);
             Comma();

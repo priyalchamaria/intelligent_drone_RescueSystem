@@ -7,6 +7,25 @@ using DroneRescue.Visualization;
 namespace DroneRescue.Planning
 {
     /// <summary>
+    /// Which rule picks the drone, once the Part 1 hard filter has said which
+    /// drones could go at all.
+    /// </summary>
+    public enum DispatchMode
+    {
+        /// <summary>Part 1 Step 3: lowest W1*distance + W2*batteryUtilisation + W3*risk wins.</summary>
+        Scored = 0,
+
+        /// <summary>
+        /// The Phase 9 baseline: nearest idle drone, and nothing else considered.
+        ///
+        /// Deliberately naive. It is here to be beaten, and it is the rule a system
+        /// without a Mission Planner would use, so the difference between the two
+        /// columns of a comparison run is exactly the value of the scoring.
+        /// </summary>
+        NearestIdle = 1
+    }
+
+    /// <summary>
     /// The Mission Planner. All four Part 1 steps now live here:
     ///
     ///   Step 1  pop the highest-priority patient          PopNextPatient
@@ -50,6 +69,13 @@ namespace DroneRescue.Planning
 
         [Tooltip("RiskFactor(location). Ranks PLACES, never patients: see the naming rule in Part 1.")]
         [SerializeField] private RiskModel risk = new RiskModel();
+
+        [Header("Phase 9 baseline comparison")]
+        [Tooltip("Scored is the Part 1 Step 3 planner. NearestIdle bypasses scoring and takes the " +
+                 "closest idle drone, as a baseline to measure the planner against. Both modes see " +
+                 "the same Step 2 hard filter, so a comparison run measures the selection rule and " +
+                 "nothing else. Set before pressing play; it is read on every dispatch.")]
+        [SerializeField] private DispatchMode dispatchMode = DispatchMode.Scored;
 
         [Header("Step 4 dispatch")]
         [Tooltip("Run the whole scenario unattended. Turn off only to drive the planner from another script.")]
@@ -102,6 +128,12 @@ namespace DroneRescue.Planning
         /// 8's explainability panel shows all of it.
         /// </summary>
         public IReadOnlyList<DroneEvaluation> LastEvaluations => _lastEvaluations;
+
+        /// <summary>Which rule is picking drones this run.</summary>
+        public DispatchMode Mode => dispatchMode;
+
+        /// <summary>The mode as it is written into the CSV and shown on the dashboard.</summary>
+        public string ModeName => dispatchMode.ToString();
 
         /// <summary>The Step 3 weights, so a score shown elsewhere can be shown with the weights that made it.</summary>
         public float W1Distance => w1Distance;
@@ -195,12 +227,21 @@ namespace DroneRescue.Planning
             Debug.Log("[Planner] EARTHQUAKE. " + environment.Patients.Count + " casualties detected, "
                       + environment.DroneList.Count + " drones on station, MAX_RANGE="
                       + MaxRange.ToString("F0") + "u.");
-            Debug.Log("[Planner] Weights: W1(distance)=" + w1Distance
-                      + " W2(batteryUtilization)=" + w2BatteryUtilization
-                      + " W3(risk)=" + w3Risk + ". Lowest score wins.");
+            if (dispatchMode == DispatchMode.NearestIdle)
+            {
+                Debug.Log("[Planner] BASELINE MODE: nearest idle drone wins. Step 3 scoring is computed "
+                          + "for the record but does not choose.");
+            }
+            else
+            {
+                Debug.Log("[Planner] Weights: W1(distance)=" + w1Distance
+                          + " W2(batteryUtilization)=" + w2BatteryUtilization
+                          + " W3(risk)=" + w3Risk + ". Lowest score wins.");
+            }
 
             RescueFeed.RaiseNote("Earthquake: " + environment.Patients.Count + " casualties detected, "
-                                 + environment.DroneList.Count + " drones on station");
+                                 + environment.DroneList.Count + " drones on station  ·  "
+                                 + ModeName + " dispatch");
         }
 
         // -----------------------------------------------------------------
@@ -407,14 +448,37 @@ namespace DroneRescue.Planning
 
                 // Strictly lower, so an exact tie keeps the earlier drone. DroneList
                 // order is fixed at registration, which makes ties reproducible.
-                if (evaluation.score < bestScore)
+                float key = SelectionKey(evaluation);
+                if (key < bestScore)
                 {
-                    bestScore = evaluation.score;
+                    bestScore = key;
                     winnerIndex = i;
                 }
             }
 
             return all;
+        }
+
+        /// <summary>
+        /// The quantity the winner is the smallest of. The one place the two dispatch
+        /// modes differ.
+        ///
+        /// Both modes are handed the same candidates: Step 2 has already excluded
+        /// anything that is not Idle or cannot afford the trip, and the baseline is
+        /// held to that too. A baseline free to dispatch a drone that physically
+        /// cannot finish would lose the comparison on impossible missions rather than
+        /// on the quality of its choices, which would prove nothing about scoring.
+        ///
+        /// The three factors are computed either way, even when NearestIdle ignores
+        /// them. They cost nothing worth counting, and it means a baseline run still
+        /// records what the planner would have chosen, which is the interesting half
+        /// of a baseline run.
+        /// </summary>
+        private float SelectionKey(DroneEvaluation evaluation)
+        {
+            return dispatchMode == DispatchMode.NearestIdle
+                ? evaluation.distanceToPatient
+                : evaluation.score;
         }
 
         /// <summary>
@@ -1078,8 +1142,16 @@ namespace DroneRescue.Planning
             for (int i = 0; i < all.Count; i++)
                 Debug.Log("[Planner]   " + (i == winnerIndex ? "WINNER " : "") + all[i].Explain());
 
+            // The rule is named only when it actually chose something. "0 of 6
+            // feasible, chosen by nearest idle" describes a choice nobody made.
+            string rule = feasibleCount == 0
+                ? ""
+                : ", chosen by " + (dispatchMode == DispatchMode.NearestIdle
+                    ? "NEAREST IDLE (baseline, scores ignored)"
+                    : "LOWEST SCORE");
+
             Debug.Log("[Planner]   -> " + feasibleCount + " of " + all.Count
-                      + " drones feasible for " + patient.id + ".");
+                      + " drones feasible for " + patient.id + rule);
         }
 
         // -----------------------------------------------------------------

@@ -48,9 +48,16 @@ namespace DroneRescue.Metrics
         [SerializeField] private bool writeEventFeed = true;
         [SerializeField] private bool writePatientCsv = true;
 
-        [Header("Labels")]
-        [Tooltip("Recorded in the CSV so a scored run and a Phase 9 baseline run can be told apart.")]
-        [SerializeField] private string dispatchMode = "Scored";
+        /// <summary>
+        /// Which dispatch rule this run used, read from the planner rather than typed
+        /// here.
+        ///
+        /// It was a serialized string until Phase 9 gave the planner a real toggle,
+        /// at which point two places named the mode and only one of them decided it.
+        /// A comparison run mislabelled that way is worse than no comparison at all,
+        /// because nothing in the output would look wrong.
+        /// </summary>
+        private string DispatchMode => planner != null ? planner.ModeName : "unknown";
 
         /// <summary>The metrics for the run that just finished, or null before then.</summary>
         public MissionMetrics LastRun { get; private set; }
@@ -190,7 +197,7 @@ namespace DroneRescue.Metrics
             }
 
             Record("run started  ·  " + environment.DroneList.Count + " drones, "
-                   + environment.Patients.Count + " casualties detected  ·  mode " + dispatchMode);
+                   + environment.Patients.Count + " casualties detected  ·  mode " + DispatchMode);
         }
 
         private void CompleteRun()
@@ -255,7 +262,7 @@ namespace DroneRescue.Metrics
                 runId = _runId,
                 startedAtUtc = _startedAtUtc,
                 scenarioName = environment.Config != null ? environment.Config.name : "unknown",
-                dispatchMode = dispatchMode,
+                dispatchMode = DispatchMode,
                 droneCount = environment.DroneList.Count,
                 patientCount = environment.Patients.Count,
                 dispatchCount = planner.DispatchCount,

@@ -1841,6 +1841,7 @@ MonoBehaviour:
     fireInfluenceRadius: 20
     openClearanceCells: 12
     confinementWeight: 0.5
+  dispatchMode: 0
   autoRun: 1
   lowBatteryPercent: 25
   flyToChargerWhenLow: 1
@@ -2009,7 +2010,6 @@ MonoBehaviour:
   writeSummaryCsv: 1
   writeEventFeed: 1
   writePatientCsv: 1
-  dispatchMode: Scored
 --- !u!114 &1208180825
 MonoBehaviour:
   m_ObjectHideFlags: 0

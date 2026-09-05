@@ -191,6 +191,10 @@ tr:last-child td { border-bottom: none; }
 td.num, th.num { text-align: right; }
 
 tr.win td { background: rgba(33, 184, 140, 0.09); }
+
+/* The drone the scored planner would have picked, marked only on a baseline run
+   where it differs from the one that actually went. */
+tr.alt td { background: rgba(76, 125, 255, 0.10); }
 tr.out td { color: var(--ink-faint); }
 
 .chip {
